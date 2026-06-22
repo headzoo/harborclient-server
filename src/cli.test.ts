@@ -1,0 +1,267 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { CommanderError } from 'commander';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { createServerMock, createDatabaseMock } = vi.hoisted(() => ({
+  createServerMock: vi.fn(),
+  createDatabaseMock: vi.fn()
+}));
+
+vi.mock('#/index.js', () => ({
+  createServer: createServerMock
+}));
+
+vi.mock('#/db/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#/db/index.js')>();
+  return {
+    ...actual,
+    createDatabase: createDatabaseMock
+  };
+});
+
+import { createProgram } from '#/cli/program.js';
+import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
+import type { IDatabase } from '#/db/index.js';
+import { startCommand, runServer } from '#/server.js';
+
+/**
+ * Builds a minimal database mock for runServer tests.
+ *
+ * @returns Mock database with spied connect and disconnect methods.
+ */
+function createMockDatabase(): IDatabase {
+  return {
+    connect: vi.fn().mockResolvedValue(undefined),
+    disconnect: vi.fn().mockResolvedValue(undefined)
+  };
+}
+
+/**
+ * Builds a minimal Fastify-like mock for runServer tests.
+ *
+ * @param listenAddress - Value returned by `server.address()` after listen.
+ * @returns Mock app with spied listen, close, and log methods.
+ */
+function createMockApp(
+  listenAddress: { address: string; port: number } = {
+    address: '127.0.0.1',
+    port: 8787
+  }
+) {
+  return {
+    listen: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    log: { info: vi.fn() },
+    server: {
+      address: () => listenAddress
+    }
+  };
+}
+
+/**
+ * Creates a Commander program configured for tests (exitOverride on root and subcommands).
+ *
+ * @param options - Injectable dependencies passed to {@link createProgram}.
+ * @returns Program ready to parse argv without exiting the process.
+ */
+function createTestProgram(options: Parameters<typeof createProgram>[1] = {}) {
+  const program = createProgram('0.1.0', options);
+  program.exitOverride();
+  for (const command of program.commands) {
+    command.exitOverride();
+  }
+  return program;
+}
+
+/**
+ * Writes a temporary server.yaml file for CLI integration tests.
+ *
+ * @param contents - Raw YAML written to the temp config file.
+ * @returns Absolute path to the written config file.
+ */
+function writeConfig(contents: string): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'harborclient-server-cli-'));
+  const configPath = path.join(dir, 'server.yaml');
+  writeFileSync(configPath, contents, 'utf8');
+  return configPath;
+}
+
+const sampleDbSection = `db:
+  driver: postgres
+  host: 127.0.0.1
+  port: 5432
+  user: harbor
+  password: harbor
+  database: harbor
+`;
+
+beforeEach(() => {
+  createServerMock.mockReset();
+  createDatabaseMock.mockReturnValue(createMockDatabase());
+});
+
+describe('createProgram', () => {
+  it('shows help output', async () => {
+    const program = createTestProgram();
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await expect(program.parseAsync(['--help'], { from: 'user' })).rejects.toBeInstanceOf(
+      CommanderError
+    );
+
+    const output = write.mock.calls.map((call) => String(call[0])).join('');
+    expect(output).toContain('harborclient-server');
+    expect(output).toContain('start');
+    expect(output).toContain('--verbose');
+    expect(output).toContain('--config');
+
+    write.mockRestore();
+  });
+
+  it('shows version output', async () => {
+    const program = createTestProgram();
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await expect(program.parseAsync(['--version'], { from: 'user' })).rejects.toBeInstanceOf(
+      CommanderError
+    );
+
+    const output = write.mock.calls.map((call) => String(call[0])).join('');
+    expect(output).toMatch(/\d+\.\d+\.\d+/);
+
+    write.mockRestore();
+  });
+
+  it('rejects unknown subcommands', async () => {
+    const program = createTestProgram();
+
+    await expect(program.parseAsync(['unknown'], { from: 'user' })).rejects.toMatchObject({
+      exitCode: 1
+    });
+  });
+
+  it('passes parsed start options to the handler', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 0.0.0.0
+${sampleDbSection}`);
+    const startHandler = vi.fn().mockResolvedValue(undefined);
+    const program = createTestProgram({ startCommand: startHandler });
+
+    await program.parseAsync(['--verbose', '--config', configPath, 'start'], {
+      from: 'user'
+    });
+
+    expect(startHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: configPath,
+        verbose: true
+      })
+    );
+  });
+
+  it('loads server config when starting', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 0.0.0.0
+${sampleDbSection}`);
+    createServerMock.mockResolvedValue(createMockApp({ address: '0.0.0.0', port: 8787 }));
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await startCommand({ config: configPath, verbose: true });
+
+    expect(loadServerConfig(configPath)).toEqual({
+      port: 8787,
+      host: '0.0.0.0',
+      db: {
+        driver: 'postgres',
+        host: '127.0.0.1',
+        port: 5432,
+        user: 'harbor',
+        password: 'harbor',
+        database: 'harbor'
+      }
+    });
+    expect(createServerMock).toHaveBeenCalledWith(
+      {
+        port: 8787,
+        host: '0.0.0.0',
+        db: {
+          driver: 'postgres',
+          host: '127.0.0.1',
+          port: 5432,
+          user: 'harbor',
+          password: 'harbor',
+          database: 'harbor'
+        }
+      },
+      { verbose: true }
+    );
+    expect(log).toHaveBeenCalledWith('Starting server with config:', {
+      port: 8787,
+      host: '0.0.0.0',
+      db: {
+        driver: 'postgres',
+        host: '127.0.0.1',
+        port: 5432,
+        user: 'harbor',
+        password: 'harbor',
+        database: 'harbor'
+      }
+    });
+
+    log.mockRestore();
+  });
+
+  it('fails start when config file is missing', async () => {
+    await expect(startCommand({ config: '/nonexistent/server.yaml' })).rejects.toThrow(ConfigError);
+  });
+});
+
+describe('runServer', () => {
+  it('connects to the database and logs the listening address', async () => {
+    const app = createMockApp();
+    const db = createMockDatabase();
+    createServerMock.mockResolvedValue(app);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await runServer(
+      {
+        host: '127.0.0.1',
+        port: 8787,
+        db: {
+          driver: 'postgres',
+          host: '127.0.0.1',
+          port: 5432,
+          user: 'harbor',
+          password: 'harbor',
+          database: 'harbor'
+        }
+      },
+      { db }
+    );
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      {
+        host: '127.0.0.1',
+        port: 8787,
+        db: {
+          driver: 'postgres',
+          host: '127.0.0.1',
+          port: 5432,
+          user: 'harbor',
+          password: 'harbor',
+          database: 'harbor'
+        }
+      },
+      {}
+    );
+    expect(db.connect).toHaveBeenCalledOnce();
+    expect(app.listen).toHaveBeenCalledWith({ host: '127.0.0.1', port: 8787 });
+    expect(log).toHaveBeenCalledWith('HarborClient server listening on http://127.0.0.1:8787');
+
+    log.mockRestore();
+  });
+});

@@ -1,0 +1,149 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
+
+/**
+ * Writes a temporary server.yaml file for config loader tests.
+ *
+ * @param contents - Raw YAML written to the temp config file.
+ * @returns Absolute path to the written config file.
+ */
+function writeConfig(contents: string): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'harborclient-server-config-'));
+  const configPath = path.join(dir, 'server.yaml');
+  writeFileSync(configPath, contents, 'utf8');
+  return configPath;
+}
+
+const sampleDbSection = `db:
+  driver: postgres
+  host: 127.0.0.1
+  port: 5432
+  user: harbor
+  password: harbor
+  database: harbor
+`;
+
+describe('loadServerConfig', () => {
+  it('loads a valid nested config', () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}`);
+
+    expect(loadServerConfig(configPath)).toEqual({
+      port: 8787,
+      host: '127.0.0.1',
+      db: {
+        driver: 'postgres',
+        host: '127.0.0.1',
+        port: 5432,
+        user: 'harbor',
+        password: 'harbor',
+        database: 'harbor'
+      }
+    });
+  });
+
+  it('accepts port as a string', () => {
+    const configPath = writeConfig(`server:
+  port: "9000"
+  host: 0.0.0.0
+${sampleDbSection}`);
+
+    expect(loadServerConfig(configPath)).toEqual({
+      port: 9000,
+      host: '0.0.0.0',
+      db: {
+        driver: 'postgres',
+        host: '127.0.0.1',
+        port: 5432,
+        user: 'harbor',
+        password: 'harbor',
+        database: 'harbor'
+      }
+    });
+  });
+
+  it('throws when the config file is missing', () => {
+    expect(() => loadServerConfig('/nonexistent/server.yaml')).toThrow(ConfigError);
+    expect(() => loadServerConfig('/nonexistent/server.yaml')).toThrow(
+      'Config file not found: /nonexistent/server.yaml'
+    );
+  });
+
+  it('throws on malformed YAML', () => {
+    const configPath = writeConfig(`server:
+  port: [unclosed
+`);
+
+    expect(() => loadServerConfig(configPath)).toThrow(ConfigError);
+    expect(() => loadServerConfig(configPath)).toThrow('Failed to parse config file:');
+  });
+
+  it('throws when server mapping is missing', () => {
+    const configPath = writeConfig(`port: 8787
+host: 127.0.0.1
+`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Config must include a "server" mapping.');
+  });
+
+  it('throws when server.port is missing', () => {
+    const configPath = writeConfig(`server:
+  host: 127.0.0.1
+`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Config must include server.port.');
+  });
+
+  it('throws when server.host is missing', () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+${sampleDbSection}`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Config must include server.host.');
+  });
+
+  it('throws when db mapping is missing', () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Config must include a "db" mapping.');
+  });
+
+  it('throws when db.driver is missing', () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+db:
+  host: 127.0.0.1
+`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Config must include db.driver.');
+  });
+
+  it('throws on invalid port values', () => {
+    const configPath = writeConfig(`server:
+  port: 99999
+  host: 127.0.0.1
+${sampleDbSection}`);
+
+    expect(() => loadServerConfig(configPath)).toThrow(
+      'Port must be an integer between 1 and 65535.'
+    );
+  });
+
+  it('throws on invalid host values', () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: "   "
+${sampleDbSection}`);
+
+    expect(() => loadServerConfig(configPath)).toThrow('Host must not be empty.');
+  });
+});

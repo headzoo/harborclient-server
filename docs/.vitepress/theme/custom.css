@@ -1,0 +1,36 @@
+/**
+ * Dark theme uses VitePress defaults (appearance: force-dark in config).
+ */
+
+/* GitHub-flavored alerts (`> [!NOTE]`, etc.) — gfmAlerts in .vitepress/config.ts */
+.vp-doc .custom-block.github-alert {
+  margin: 16px 0;
+}
+
+.vp-doc .vp-doc-image-link {
+  display: inline-block;
+}
+
+@media (min-width: 768px) {
+  .VPNavBarSearch {
+    flex: 1 1 auto;
+    min-width: 16rem;
+  }
+
+  .VPNavBarSearch #local-search,
+  .VPNavBarSearch #docsearch {
+    width: 100%;
+  }
+
+  .VPNavBarSearch .DocSearch-Button {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 768px) {
+  .VPLocalSearchBox .shell {
+    width: min(100vw - 60px, 1100px) !important;
+    max-height: min(100vh - 128px, 1100px) !important;
+  }
+}

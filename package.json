@@ -1,0 +1,57 @@
+{
+  "name": "harborclient-server",
+  "version": "0.1.0",
+  "description": "Central server for HarborClient",
+  "type": "module",
+  "bin": {
+    "harborclient-server": "./dist/cli.js"
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup",
+    "start": "node dist/cli.js start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint --cache .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docs:build": "pnpm docs:build:nav && vitepress build docs",
+    "docs:build:nav": "node scripts/build-docs-nav.mjs && node scripts/assert-docs-slugs.mjs",
+    "docs:preview": "pnpm docs:build && vitepress preview docs",
+    "docs:serve": "pnpm docs:build:nav && concurrently --kill-others --prefixColors=auto -n nav,vp \"node scripts/watch-docs-nav.mjs\" \"vitepress dev docs\""
+  },
+  "author": {
+    "name": "Harbor",
+    "email": "harbor@example.com"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@10.17.1",
+  "dependencies": {
+    "@google-cloud/firestore": "^8.6.0",
+    "commander": "^15.0.0",
+    "fastify": "^5.5.0",
+    "fastify-type-provider-zod": "^6.1.0",
+    "mysql2": "^3.22.5",
+    "pg": "^8.22.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/pg": "^8.20.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.5",
+    "prettier": "^3.8.4",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.1.9"
+  }
+}
