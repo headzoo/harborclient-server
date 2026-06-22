@@ -1,5 +1,9 @@
 import { Command } from 'commander';
 import { DEFAULT_CONFIG_PATH } from '#/config/serverConfig.js';
+import {
+  registerCollectionCommand,
+  type CollectionCommandOptions
+} from '#/cli/collectionCommand.js';
 import { registerMigrateCommand, type MigrateCommandOptions } from '#/cli/migrateCommand.js';
 import {
   registerUserCommand,
@@ -22,6 +26,13 @@ export interface ProgramDependencies {
    * Optional override for the migrate subcommand handler (used in tests).
    */
   migrateCommand?: (options: MigrateCommandOptions) => Promise<void>;
+
+  /**
+   * Optional overrides for collection subcommand handlers (used in tests).
+   */
+  collectionCommand?: {
+    list?: (options: CollectionCommandOptions) => Promise<void>;
+  };
 
   /**
    * Optional overrides for user subcommand handlers (used in tests).
@@ -63,6 +74,7 @@ export function createProgram(version: string, deps: ProgramDependencies = {}): 
 
   registerStartCommand(program, deps.startCommand);
   registerMigrateCommand(program, deps.migrateCommand);
+  registerCollectionCommand(program, deps.collectionCommand);
   registerUserCommand(program, deps.userCommand);
 
   return program;

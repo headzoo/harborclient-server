@@ -27,6 +27,7 @@ vi.mock('#/server/auth/throttle/createThrottleStore.js', () => ({
 }));
 
 import { createProgram } from '#/cli/program.js';
+import { collectionListCommand } from '#/cli/collectionCommand.js';
 import { migrateCommand } from '#/cli/migrateCommand.js';
 import {
   userCreateCommand,
@@ -38,6 +39,7 @@ import {
 import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
 import type { IDatabase } from '#/db/index.js';
 import { createStubDatabase } from '#/db/stubDatabase.js';
+import { defaultAuth } from '#/db/types.js';
 import type { IThrottleStore } from '#/server/auth/throttle/IThrottleStore.js';
 import { createStubThrottleStore } from '#/server/auth/throttle/stubThrottleStore.js';
 import { startCommand, runServer } from '#/server.js';
@@ -198,6 +200,7 @@ describe('createProgram', () => {
     expect(output).toContain('service-hub');
     expect(output).toContain('start');
     expect(output).toContain('migrate');
+    expect(output).toContain('collection');
     expect(output).toContain('user');
     expect(output).toContain('--verbose');
     expect(output).toContain('--config');
@@ -378,6 +381,42 @@ ${sampleDbSection}${sampleRedisSection}`);
     expect(db.migrate).toHaveBeenCalledOnce();
     expect(db.disconnect).toHaveBeenCalledOnce();
     expect(log).toHaveBeenCalledWith('Database migration completed successfully.');
+
+    log.mockRestore();
+  });
+});
+
+describe('collection commands', () => {
+  it('lists stored collections', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}${sampleRedisSection}`);
+    const db = createMockDatabase();
+    db.listCollections = vi.fn().mockResolvedValue([
+      {
+        id: 'collection-1',
+        name: 'Shared API',
+        variables: [],
+        headers: [],
+        auth: defaultAuth(),
+        preRequestScript: '',
+        postRequestScript: '',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdByUserId: 'user-1',
+        updatedByUserId: 'user-1'
+      }
+    ]);
+    createDatabaseMock.mockReturnValue(db);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await collectionListCommand({ config: configPath });
+
+    expect(db.connect).toHaveBeenCalledOnce();
+    expect(db.listCollections).toHaveBeenCalledOnce();
+    expect(db.disconnect).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledWith('- id: collection-1');
 
     log.mockRestore();
   });
