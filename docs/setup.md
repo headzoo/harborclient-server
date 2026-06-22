@@ -2,7 +2,7 @@
 
 ```bash
 pnpm install
-service-hub migrate
+team-hub migrate
 ```
 
 See [Authentication](./auth.md) for creating and managing API bearer tokens.

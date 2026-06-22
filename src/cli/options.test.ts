@@ -31,12 +31,12 @@ describe('parseHost', () => {
 
 describe('expandHome', () => {
   it('expands home directory paths', () => {
-    expect(expandHome('~/.service-hub')).toContain('.service-hub');
+    expect(expandHome('~/.team-hub')).toContain('.team-hub');
     expect(expandHome('~')).not.toBe('~');
   });
 
   it('leaves absolute paths unchanged', () => {
-    expect(expandHome('/var/lib/service-hub')).toBe('/var/lib/service-hub');
+    expect(expandHome('/var/lib/team-hub')).toBe('/var/lib/team-hub');
   });
 });
 
@@ -46,8 +46,8 @@ describe('parseDataDir', () => {
   });
 
   it('accepts creatable paths under existing parents', () => {
-    const dir = parseDataDir('/tmp/service-hub-test-dir');
-    expect(dir).toBe('/tmp/service-hub-test-dir');
+    const dir = parseDataDir('/tmp/team-hub-test-dir');
+    expect(dir).toBe('/tmp/team-hub-test-dir');
   });
 
   it('rejects paths whose parent does not exist', () => {
@@ -57,6 +57,6 @@ describe('parseDataDir', () => {
 
 describe('defaultDataDir', () => {
   it('returns an expanded home path', () => {
-    expect(defaultDataDir()).toContain('.service-hub');
+    expect(defaultDataDir()).toContain('.team-hub');
   });
 });

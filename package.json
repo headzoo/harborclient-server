@@ -1,10 +1,10 @@
 {
-  "name": "service-hub",
+  "name": "team-hub",
   "version": "0.1.0",
-  "description": "Service Hub — central server for HarborClient",
+  "description": "Team Hub — central server for HarborClient",
   "type": "module",
   "bin": {
-    "service-hub": "./dist/cli.js"
+    "team-hub": "./dist/cli.js"
   },
   "imports": {
     "#/*": "./src/*"

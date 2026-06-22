@@ -90,7 +90,7 @@ export interface ListAuditLogOptions {
 }
 
 /**
- * Stored metadata for a Service Hub user account.
+ * Stored metadata for a Team Hub user account.
  */
 export interface UserRecord {
   /**

@@ -16,7 +16,7 @@ import type {
 import type { ApiTokenRecord } from '#/db/types.js';
 
 /**
- * Common contract for Service Hub database backends.
+ * Common contract for Team Hub database backends.
  */
 export interface IDatabase {
   /**

@@ -4,7 +4,7 @@ import pkg from '../../package.json';
 import { toAnchor } from '../../scripts/docs-slugger.mjs';
 import { sidebar } from './sidebar.generated';
 
-const siteBase = '/harborclient-service-hub/';
+const siteBase = '/harborclient-team-hub/';
 
 const withSiteBase = (path: string) => {
   if (!path.startsWith('/') || path.startsWith(siteBase) || path.startsWith('//')) {
@@ -16,8 +16,8 @@ const withSiteBase = (path: string) => {
 
 export default withMermaid(
   defineConfig({
-    title: 'Service Hub',
-    description: 'Service Hub — central server for HarborClient',
+    title: 'Team Hub',
+    description: 'Team Hub — central server for HarborClient',
     base: siteBase,
     appearance: 'force-dark',
     cleanUrls: true,
@@ -87,20 +87,20 @@ export default withMermaid(
     themeConfig: {
       logo: {
         src: '/images/logo.png',
-        alt: 'Service Hub',
+        alt: 'Team Hub',
       },
       siteTitle: false,
       nav: [
         {
           text: `v${pkg.version}`,
-          link: 'https://github.com/headzoo/harborclient-service-hub/releases',
+          link: 'https://github.com/headzoo/harborclient-team-hub/releases',
         },
       ],
       socialLinks: [
         {
           icon: 'github',
-          link: 'https://github.com/headzoo/harborclient-service-hub',
-          ariaLabel: 'Service Hub on GitHub',
+          link: 'https://github.com/headzoo/harborclient-team-hub',
+          ariaLabel: 'Team Hub on GitHub',
         },
       ],
       sidebar,

@@ -60,8 +60,8 @@ export function createProgram(version: string, deps: ProgramDependencies = {}): 
   const program = new Command();
 
   program
-    .name('service-hub')
-    .description('Service Hub — central server for HarborClient')
+    .name('team-hub')
+    .description('Team Hub — central server for HarborClient')
     .version(version)
     .showHelpAfterError()
     .enablePositionalOptions()

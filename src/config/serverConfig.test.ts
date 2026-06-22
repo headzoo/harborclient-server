@@ -11,7 +11,7 @@ import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
  * @returns Absolute path to the written config file.
  */
 function writeConfig(contents: string): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'service-hub-config-'));
+  const dir = mkdtempSync(path.join(tmpdir(), 'team-hub-config-'));
   const configPath = path.join(dir, 'server.yaml');
   writeFileSync(configPath, contents, 'utf8');
   return configPath;

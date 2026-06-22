@@ -2,7 +2,7 @@
 import { withBase } from 'vitepress';
 
 const logoSrc = withBase('/images/logo.png');
-const SITE_TITLE = 'Service Hub';
+const SITE_TITLE = 'Team Hub';
 const homeHref = withBase('/');
 </script>
 

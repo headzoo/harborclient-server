@@ -90,11 +90,11 @@ export function parseDataDir(value: string): string {
 }
 
 /**
- * Returns the default Service Hub data directory path.
+ * Returns the default Team Hub data directory path.
  *
- * @returns Validated path to `~/.service-hub`.
+ * @returns Validated path to `~/.team-hub`.
  * @throws {InvalidArgumentError} When the default path cannot be used.
  */
 export function defaultDataDir(): string {
-  return parseDataDir('~/.service-hub');
+  return parseDataDir('~/.team-hub');
 }

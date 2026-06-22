@@ -1,6 +1,6 @@
 # CLI
 
-Service Hub ships a single command-line program, `service-hub`, for starting the server, applying database migrations, and administering users and collections.
+Team Hub ships a single command-line program, `team-hub`, for starting the server, applying database migrations, and administering users and collections.
 
 During development, run the CLI without building:
 
@@ -27,8 +27,8 @@ These flags apply to every subcommand:
 Place global flags before the subcommand:
 
 ```bash
-service-hub --config /etc/service-hub/server.yaml migrate
-service-hub -v start
+team-hub --config /etc/team-hub/server.yaml migrate
+team-hub -v start
 ```
 
 ## Commands overview
@@ -49,12 +49,12 @@ service-hub -v start
 
 ## start
 
-Start the Service Hub HTTP server using the configured host, port, database, and Redis settings.
+Start the Team Hub HTTP server using the configured host, port, database, and Redis settings.
 
 ```bash
-service-hub start
-service-hub -v start
-service-hub -c server.yaml start
+team-hub start
+team-hub -v start
+team-hub -c server.yaml start
 ```
 
 | Option | Required | Description |
@@ -68,8 +68,8 @@ The server listens on the address configured in `server.yaml` (see [Setup](./set
 Apply database schema migrations for the configured backend (Postgres, MySQL, or Firestore).
 
 ```bash
-service-hub migrate
-service-hub -c /path/to/server.yaml migrate
+team-hub migrate
+team-hub -c /path/to/server.yaml migrate
 ```
 
 | Option | Required | Description |
@@ -89,8 +89,8 @@ Database migration completed successfully.
 List all collections stored in the database.
 
 ```bash
-service-hub collection list
-service-hub collection list -c server.yaml
+team-hub collection list
+team-hub collection list -c server.yaml
 ```
 
 | Option | Required | Description |
@@ -126,10 +126,10 @@ Manage user accounts. User accounts have a role of `user` or `admin` and, for `u
 Create a new user account. The command also creates an initial API bearer token and prints the one-time `hbk_…` secret.
 
 ```bash
-service-hub user create --name alice --role user \
+team-hub user create --name alice --role user \
   --collection-access '*' --environment-access '*'
 
-service-hub user create --name ops --role admin
+team-hub user create --name ops --role admin
 ```
 
 | Option | Required | Description |
@@ -169,7 +169,7 @@ hbk_...
 List all user accounts.
 
 ```bash
-service-hub user list
+team-hub user list
 ```
 
 | Option | Required | Description |
@@ -183,7 +183,7 @@ Prints each user with id, name, role, access lists, and timestamps. When no user
 Show a single user account by id.
 
 ```bash
-service-hub user show <user-id>
+team-hub user show <user-id>
 ```
 
 | Argument / option | Required | Description |
@@ -197,8 +197,8 @@ Prints the same fields as `user list` for one account. When the id is not found,
 Update an existing user account.
 
 ```bash
-service-hub user update <user-id> --name "Alice Smith"
-service-hub user update <user-id> --role user --collection-access '*'
+team-hub user update <user-id> --name "Alice Smith"
+team-hub user update <user-id> --role user --collection-access '*'
 ```
 
 | Argument / option | Required | Description |
@@ -218,7 +218,7 @@ On success, prints `Updated user "<name>" (<user-id>).`
 Delete a user account and revoke all of their API tokens.
 
 ```bash
-service-hub user delete <user-id>
+team-hub user delete <user-id>
 ```
 
 | Argument / option | Required | Description |
@@ -236,7 +236,7 @@ Manage API bearer tokens. Tokens belong to a user and inherit that user's access
 Create a new API bearer token for an existing user.
 
 ```bash
-service-hub user token create --user <user-id> --name "Alice laptop"
+team-hub user token create --user <user-id> --name "Alice laptop"
 ```
 
 | Option | Required | Description |
@@ -261,8 +261,8 @@ hbk_...
 List stored API bearer tokens.
 
 ```bash
-service-hub user token list
-service-hub user token list --user <user-id>
+team-hub user token list
+team-hub user token list --user <user-id>
 ```
 
 | Option | Required | Description |
@@ -276,7 +276,7 @@ Each token entry includes id, owning user id, name, prefix, created time, last u
 Revoke an API bearer token by id.
 
 ```bash
-service-hub user token revoke <token-id>
+team-hub user token revoke <token-id>
 ```
 
 | Argument / option | Required | Description |
@@ -291,21 +291,21 @@ Typical workflow after [Setup](./setup.md):
 
 ```bash
 # Apply schema
-service-hub migrate
+team-hub migrate
 
 # Start the server
-service-hub start
+team-hub start
 
 # Inspect collections (ids useful for access lists)
-service-hub collection list
+team-hub collection list
 
 # Create users
-service-hub user create --name ops --role admin
-service-hub user create --name alice --role user \
+team-hub user create --name ops --role admin
+team-hub user create --name alice --role user \
   --collection-access '*' --environment-access '*'
 
 # Manage tokens
-service-hub user token list
-service-hub user token create --user <user-id> --name "Alice laptop"
-service-hub user token revoke <token-id>
+team-hub user token list
+team-hub user token create --user <user-id> --name "Alice laptop"
+team-hub user token revoke <token-id>
 ```
