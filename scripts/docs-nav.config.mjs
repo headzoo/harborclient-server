@@ -24,6 +24,7 @@ export const docsNav = [
   { kind: 'page', slug: 'prerequisites', title: 'Prerequisites', maxDepth: 0 },
   { kind: 'page', slug: 'setup', title: 'Setup', maxDepth: 0 },
   { kind: 'page', slug: 'auth', title: 'Authentication', maxDepth: 0 },
+  { kind: 'page', slug: 'endpoints', title: 'API Endpoints', maxDepth: 3 },
   { kind: 'page', slug: 'development', title: 'Development', maxDepth: 0 },
   { kind: 'page', slug: 'build', title: 'Build', maxDepth: 0 },
   { kind: 'page', slug: 'scripts', title: 'Scripts', maxDepth: 0 },

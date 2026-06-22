@@ -1,0 +1,168 @@
+import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import type { IDatabase } from '#/db/IDatabase.js';
+import { handleDbError } from '#/server/routes/errors.js';
+import {
+  collectionIdParamSchema,
+  errorResponseSchema,
+  idParamSchema
+} from '#/server/routes/schemas/common.js';
+import {
+  createFolderBodySchema,
+  emptyResponseSchema,
+  folderRecordSchema,
+  listFoldersResponseSchema,
+  renameFolderBodySchema,
+  reorderFoldersBodySchema,
+  serializeFolder
+} from '#/server/routes/schemas/entities.js';
+
+/**
+ * Registers bearer-protected folder CRUD and reorder routes.
+ *
+ * @param app - Encapsulated Fastify scope with auth applied.
+ * @param db - Database used to persist folders.
+ */
+export async function registerFolderRoutes(app: FastifyInstance, db: IDatabase): Promise<void> {
+  const routes = app.withTypeProvider<ZodTypeProvider>();
+
+  routes.route({
+    method: 'GET',
+    url: '/collections/:collectionId/folders',
+    schema: {
+      params: collectionIdParamSchema,
+      response: {
+        200: listFoldersResponseSchema
+      }
+    },
+    /**
+     * Lists folders in a collection ordered by sort order then name.
+     */
+    handler: async (request, reply) => {
+      try {
+        const folders = await db.listFolders(request.params.collectionId);
+        return reply.send({
+          folders: folders.map((folder) => serializeFolder(folder))
+        });
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'POST',
+    url: '/collections/:collectionId/folders',
+    schema: {
+      params: collectionIdParamSchema,
+      body: createFolderBodySchema,
+      response: {
+        200: folderRecordSchema,
+        400: errorResponseSchema
+      }
+    },
+    /**
+     * Creates a folder in the given collection.
+     */
+    handler: async (request, reply) => {
+      try {
+        const folder = await db.createFolder(request.params.collectionId, request.body.name);
+        return reply.send(serializeFolder(folder));
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'PATCH',
+    url: '/folders/:id',
+    schema: {
+      params: idParamSchema,
+      body: renameFolderBodySchema,
+      response: {
+        200: folderRecordSchema,
+        400: errorResponseSchema,
+        404: errorResponseSchema
+      }
+    },
+    /**
+     * Renames a folder by id.
+     */
+    handler: async (request, reply) => {
+      try {
+        const folder = await db.renameFolder(request.params.id, request.body.name);
+        return reply.send(serializeFolder(folder));
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'DELETE',
+    url: '/folders/:id',
+    schema: {
+      params: idParamSchema,
+      response: {
+        204: emptyResponseSchema,
+        404: errorResponseSchema
+      }
+    },
+    /**
+     * Deletes a folder and all requests inside it.
+     */
+    handler: async (request, reply) => {
+      try {
+        await db.deleteFolder(request.params.id);
+        return reply.code(204).send(null);
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'PUT',
+    url: '/collections/:collectionId/folders/reorder',
+    schema: {
+      params: collectionIdParamSchema,
+      body: reorderFoldersBodySchema,
+      response: {
+        204: emptyResponseSchema,
+        404: errorResponseSchema
+      }
+    },
+    /**
+     * Reorders folders within a collection.
+     */
+    handler: async (request, reply) => {
+      try {
+        await db.reorderFolders(request.params.collectionId, request.body.orderedFolderIds);
+        return reply.code(204).send(null);
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+}

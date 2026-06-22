@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import type { IDatabase } from '#/db/IDatabase.js';
+import { describe, expect, it } from 'vitest';
+import { createStubDatabase } from '#/db/stubDatabase.js';
 import { createServer } from '#/server/createServer.js';
 
 /**
@@ -7,17 +7,17 @@ import { createServer } from '#/server/createServer.js';
  *
  * @returns Mock database with no-op lifecycle methods.
  */
-function createStubDatabase(): IDatabase {
-  return {
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    migrate: vi.fn().mockResolvedValue(undefined),
-    createApiToken: vi.fn().mockResolvedValue(undefined),
-    findActiveApiTokenByHash: vi.fn().mockResolvedValue(null),
-    listApiTokens: vi.fn().mockResolvedValue([]),
-    revokeApiToken: vi.fn().mockResolvedValue(false),
-    touchApiTokenLastUsed: vi.fn().mockResolvedValue(undefined)
-  };
+function createHealthStubDatabase() {
+  const db = createStubDatabase();
+  db.connect.mockResolvedValue(undefined);
+  db.disconnect.mockResolvedValue(undefined);
+  db.migrate.mockResolvedValue(undefined);
+  db.createApiToken.mockResolvedValue(undefined);
+  db.findActiveApiTokenByHash.mockResolvedValue(null);
+  db.listApiTokens.mockResolvedValue([]);
+  db.revokeApiToken.mockResolvedValue(false);
+  db.touchApiTokenLastUsed.mockResolvedValue(undefined);
+  return db;
 }
 
 describe('GET /health', () => {
@@ -28,7 +28,7 @@ describe('GET /health', () => {
         port: 8787,
         db: { driver: 'postgres' }
       },
-      { version: '0.1.0', db: createStubDatabase() }
+      { version: '0.1.0', db: createHealthStubDatabase() }
     );
 
     const response = await app.inject({

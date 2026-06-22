@@ -59,3 +59,5 @@ Authorization: Bearer hbk_...
 Protected routes return `401 Unauthorized` with `WWW-Authenticate: Bearer` when the header is missing, malformed, or the token is unknown or revoked.
 
 `GET /health` remains public for load balancers and connectivity checks.
+
+See [API Endpoints](./endpoints.md) for the full route reference.

@@ -21,6 +21,155 @@ export const sidebar: DefaultTheme.SidebarItem[] =
     "link": "/auth"
   },
   {
+    "text": "API Endpoints",
+    "link": "/endpoints",
+    "items": [
+      {
+        "text": "Overview",
+        "link": "/endpoints#overview"
+      },
+      {
+        "text": "Conventions",
+        "link": "/endpoints#conventions",
+        "items": [
+          {
+            "text": "Timestamps",
+            "link": "/endpoints#timestamps"
+          },
+          {
+            "text": "Errors",
+            "link": "/endpoints#errors"
+          },
+          {
+            "text": "Empty responses",
+            "link": "/endpoints#empty-responses"
+          },
+          {
+            "text": "Shared types",
+            "link": "/endpoints#shared-types"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "Health",
+        "link": "/endpoints#health",
+        "items": [
+          {
+            "text": "GET /health",
+            "link": "/endpoints#get-health"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "Collections",
+        "link": "/endpoints#collections",
+        "items": [
+          {
+            "text": "GET /collections",
+            "link": "/endpoints#get-collections"
+          },
+          {
+            "text": "POST /collections",
+            "link": "/endpoints#post-collections"
+          },
+          {
+            "text": "PUT /collections/:id",
+            "link": "/endpoints#put-collectionsid"
+          },
+          {
+            "text": "DELETE /collections/:id",
+            "link": "/endpoints#delete-collectionsid"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "Environments",
+        "link": "/endpoints#environments",
+        "items": [
+          {
+            "text": "GET /environments",
+            "link": "/endpoints#get-environments"
+          },
+          {
+            "text": "POST /environments",
+            "link": "/endpoints#post-environments"
+          },
+          {
+            "text": "PUT /environments/:id",
+            "link": "/endpoints#put-environmentsid"
+          },
+          {
+            "text": "DELETE /environments/:id",
+            "link": "/endpoints#delete-environmentsid"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "Folders",
+        "link": "/endpoints#folders",
+        "items": [
+          {
+            "text": "GET /collections/:collectionId/folders",
+            "link": "/endpoints#get-collectionscollectionidfolders"
+          },
+          {
+            "text": "POST /collections/:collectionId/folders",
+            "link": "/endpoints#post-collectionscollectionidfolders"
+          },
+          {
+            "text": "PATCH /folders/:id",
+            "link": "/endpoints#patch-foldersid"
+          },
+          {
+            "text": "DELETE /folders/:id",
+            "link": "/endpoints#delete-foldersid"
+          },
+          {
+            "text": "PUT /collections/:collectionId/folders/reorder",
+            "link": "/endpoints#put-collectionscollectionidfoldersreorder"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "Requests",
+        "link": "/endpoints#requests",
+        "items": [
+          {
+            "text": "GET /collections/:collectionId/requests",
+            "link": "/endpoints#get-collectionscollectionidrequests"
+          },
+          {
+            "text": "POST /collections/:collectionId/requests",
+            "link": "/endpoints#post-collectionscollectionidrequests"
+          },
+          {
+            "text": "PUT /requests/:id",
+            "link": "/endpoints#put-requestsid"
+          },
+          {
+            "text": "DELETE /requests/:id",
+            "link": "/endpoints#delete-requestsid"
+          },
+          {
+            "text": "PUT /collections/:collectionId/requests/reorder",
+            "link": "/endpoints#put-collectionscollectionidrequestsreorder"
+          },
+          {
+            "text": "PUT /requests/:id/move",
+            "link": "/endpoints#put-requestsidmove"
+          }
+        ],
+        "collapsed": false
+      }
+    ],
+    "collapsed": false
+  },
+  {
     "text": "Development",
     "link": "/development"
   },

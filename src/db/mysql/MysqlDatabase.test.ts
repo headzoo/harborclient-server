@@ -126,7 +126,7 @@ describe('MysqlDatabase lifecycle', () => {
 });
 
 describe('MysqlDatabase api tokens', () => {
-  it('runs migrate SQL against the pool', async () => {
+  it('runs all migrate SQL statements against the pool', async () => {
     const pool = createMockPool();
     createPoolMock.mockReturnValue(pool);
     const db = MysqlDatabase.fromConfig(validConfig);
@@ -136,6 +136,22 @@ describe('MysqlDatabase api tokens', () => {
 
     expect(pool.execute).toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS api_tokens'),
+      []
+    );
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS collections'),
+      []
+    );
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS environments'),
+      []
+    );
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS folders'),
+      []
+    );
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS requests'),
       []
     );
 
@@ -156,5 +172,42 @@ describe('MysqlDatabase api tokens', () => {
         revokedAt: null
       })
     ).rejects.toThrow('MySQL database is not connected.');
+  });
+});
+
+describe('MysqlDatabase collections', () => {
+  it('inserts a new collection with generated id', async () => {
+    const pool = createMockPool();
+    createPoolMock.mockReturnValue(pool);
+    const db = MysqlDatabase.fromConfig(validConfig);
+    await db.connect();
+
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    pool.execute.mockResolvedValueOnce([{ affectedRows: 1 }, undefined]).mockResolvedValueOnce([
+      [
+        {
+          id: 'collection-1',
+          name: 'Shared API',
+          variables: '[]',
+          headers: '[]',
+          auth: '{"type":"none","basic":{"username":"","password":""},"bearer":{"token":""}}',
+          pre_request_script: '',
+          post_request_script: '',
+          created_at: createdAt
+        }
+      ],
+      undefined
+    ]);
+
+    const collection = await db.createCollection('Shared API');
+
+    expect(collection.name).toBe('Shared API');
+    expect(collection.id).toBe('collection-1');
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO collections'),
+      expect.arrayContaining(['Shared API'])
+    );
+
+    await db.disconnect();
   });
 });

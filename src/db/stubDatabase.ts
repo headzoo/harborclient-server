@@ -1,0 +1,40 @@
+import { vi, type Mocked } from 'vitest';
+import type { IDatabase } from '#/db/IDatabase.js';
+
+/**
+ * Stub {@link IDatabase} with unresolved vi.fn mocks for every method.
+ *
+ * Used by HTTP and CLI tests that only exercise a subset of database behavior.
+ *
+ * @returns Database stub whose methods can be configured per test.
+ */
+export function createStubDatabase(): Mocked<IDatabase> {
+  return {
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    migrate: vi.fn(),
+    createApiToken: vi.fn(),
+    findActiveApiTokenByHash: vi.fn(),
+    listApiTokens: vi.fn(),
+    revokeApiToken: vi.fn(),
+    touchApiTokenLastUsed: vi.fn(),
+    listCollections: vi.fn(),
+    createCollection: vi.fn(),
+    updateCollection: vi.fn(),
+    deleteCollection: vi.fn(),
+    listEnvironments: vi.fn(),
+    createEnvironment: vi.fn(),
+    updateEnvironment: vi.fn(),
+    deleteEnvironment: vi.fn(),
+    listRequests: vi.fn(),
+    saveRequest: vi.fn(),
+    deleteRequest: vi.fn(),
+    listFolders: vi.fn(),
+    createFolder: vi.fn(),
+    renameFolder: vi.fn(),
+    deleteFolder: vi.fn(),
+    reorderFolders: vi.fn(),
+    reorderRequests: vi.fn(),
+    moveRequest: vi.fn()
+  };
+}

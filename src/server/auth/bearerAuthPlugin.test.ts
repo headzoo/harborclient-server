@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { IDatabase } from '#/db/IDatabase.js';
+import { createStubDatabase } from '#/db/stubDatabase.js';
 import type { ApiTokenRecord } from '#/db/types.js';
 import { hashToken } from '#/server/auth/apiTokens.js';
 import {
@@ -25,16 +26,10 @@ const sampleRecord: ApiTokenRecord = {
  * @returns Mock database implementing token lookup and touch methods.
  */
 function createAuthDb(record: ApiTokenRecord | null): IDatabase {
-  return {
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    migrate: vi.fn(),
-    createApiToken: vi.fn(),
-    findActiveApiTokenByHash: vi.fn().mockResolvedValue(record),
-    listApiTokens: vi.fn(),
-    revokeApiToken: vi.fn(),
-    touchApiTokenLastUsed: vi.fn().mockResolvedValue(undefined)
-  };
+  const db = createStubDatabase();
+  db.findActiveApiTokenByHash.mockResolvedValue(record);
+  db.touchApiTokenLastUsed.mockResolvedValue(undefined);
+  return db;
 }
 
 /**

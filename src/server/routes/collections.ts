@@ -1,0 +1,141 @@
+import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import type { IDatabase } from '#/db/IDatabase.js';
+import { handleDbError } from '#/server/routes/errors.js';
+import { errorResponseSchema, idParamSchema } from '#/server/routes/schemas/common.js';
+import {
+  collectionRecordSchema,
+  createCollectionBodySchema,
+  emptyResponseSchema,
+  listCollectionsResponseSchema,
+  serializeCollection,
+  updateCollectionBodySchema
+} from '#/server/routes/schemas/entities.js';
+
+/**
+ * Registers bearer-protected collection CRUD routes.
+ *
+ * @param app - Encapsulated Fastify scope with auth applied.
+ * @param db - Database used to persist collections.
+ */
+export async function registerCollectionRoutes(app: FastifyInstance, db: IDatabase): Promise<void> {
+  const routes = app.withTypeProvider<ZodTypeProvider>();
+
+  routes.route({
+    method: 'GET',
+    url: '/collections',
+    schema: {
+      response: {
+        200: listCollectionsResponseSchema
+      }
+    },
+    /**
+     * Lists all collections ordered by name.
+     */
+    handler: async (_request, reply) => {
+      try {
+        const collections = await db.listCollections();
+        return reply.send({
+          collections: collections.map((collection) => serializeCollection(collection))
+        });
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'POST',
+    url: '/collections',
+    schema: {
+      body: createCollectionBodySchema,
+      response: {
+        200: collectionRecordSchema,
+        400: errorResponseSchema
+      }
+    },
+    /**
+     * Creates a new collection with the given display name.
+     */
+    handler: async (request, reply) => {
+      try {
+        const collection = await db.createCollection(request.body.name);
+        return reply.send(serializeCollection(collection));
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'PUT',
+    url: '/collections/:id',
+    schema: {
+      params: idParamSchema,
+      body: updateCollectionBodySchema,
+      response: {
+        200: collectionRecordSchema,
+        400: errorResponseSchema,
+        404: errorResponseSchema
+      }
+    },
+    /**
+     * Updates a collection's metadata and defaults.
+     */
+    handler: async (request, reply) => {
+      try {
+        const collection = await db.updateCollection(
+          request.params.id,
+          request.body.name,
+          request.body.variables,
+          request.body.headers,
+          request.body.preRequestScript,
+          request.body.postRequestScript,
+          request.body.auth
+        );
+        return reply.send(serializeCollection(collection));
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+
+  routes.route({
+    method: 'DELETE',
+    url: '/collections/:id',
+    schema: {
+      params: idParamSchema,
+      response: {
+        204: emptyResponseSchema,
+        404: errorResponseSchema
+      }
+    },
+    /**
+     * Deletes a collection and all nested folders and requests.
+     */
+    handler: async (request, reply) => {
+      try {
+        await db.deleteCollection(request.params.id);
+        return reply.code(204).send(null);
+      } catch (error) {
+        if (handleDbError(reply, error)) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  });
+}

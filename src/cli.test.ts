@@ -26,6 +26,7 @@ import { migrateCommand } from '#/cli/migrateCommand.js';
 import { tokenCreateCommand, tokenListCommand, tokenRevokeCommand } from '#/cli/tokenCommand.js';
 import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
 import type { IDatabase } from '#/db/index.js';
+import { createStubDatabase } from '#/db/stubDatabase.js';
 import { startCommand, runServer } from '#/server.js';
 
 /**
@@ -34,16 +35,16 @@ import { startCommand, runServer } from '#/server.js';
  * @returns Mock database with spied connect and disconnect methods.
  */
 function createMockDatabase(): IDatabase {
-  return {
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    migrate: vi.fn().mockResolvedValue(undefined),
-    createApiToken: vi.fn().mockResolvedValue(undefined),
-    findActiveApiTokenByHash: vi.fn().mockResolvedValue(null),
-    listApiTokens: vi.fn().mockResolvedValue([]),
-    revokeApiToken: vi.fn().mockResolvedValue(false),
-    touchApiTokenLastUsed: vi.fn().mockResolvedValue(undefined)
-  };
+  const db = createStubDatabase();
+  db.connect.mockResolvedValue(undefined);
+  db.disconnect.mockResolvedValue(undefined);
+  db.migrate.mockResolvedValue(undefined);
+  db.createApiToken.mockResolvedValue(undefined);
+  db.findActiveApiTokenByHash.mockResolvedValue(null);
+  db.listApiTokens.mockResolvedValue([]);
+  db.revokeApiToken.mockResolvedValue(false);
+  db.touchApiTokenLastUsed.mockResolvedValue(undefined);
+  return db;
 }
 
 /**

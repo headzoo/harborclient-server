@@ -1,6 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { IDatabase } from '#/db/IDatabase.js';
+import { registerCollectionRoutes } from '#/server/routes/collections.js';
+import { registerEnvironmentRoutes } from '#/server/routes/environments.js';
+import { registerFolderRoutes } from '#/server/routes/folders.js';
 import { registerHealthRoute } from '#/server/routes/health.js';
+import { registerRequestRoutes } from '#/server/routes/requests.js';
 import {
   createBearerAuthHook,
   registerBearerAuthDecorator
@@ -43,6 +47,11 @@ export async function registerProtectedRoutes(
 ): Promise<void> {
   registerBearerAuthDecorator(app);
   app.addHook('onRequest', createBearerAuthHook(options.db));
+
+  await registerCollectionRoutes(app, options.db);
+  await registerEnvironmentRoutes(app, options.db);
+  await registerFolderRoutes(app, options.db);
+  await registerRequestRoutes(app, options.db);
 }
 
 /**
