@@ -22,6 +22,7 @@ WORKDIR /app
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     gettext-base \
+    nano \
     nginx \
     postgresql \
     postgresql-contrib \
@@ -52,10 +53,12 @@ COPY --from=builder /app/package.json ./package.json
 
 COPY docker/entrypoint.sh /docker/entrypoint.sh
 COPY docker/start-team-hub.sh /docker/start-team-hub.sh
+COPY docker/restart-team-hub.sh /docker/restart-team-hub.sh
 COPY docker/server.yaml.template /docker/server.yaml.template
 COPY docker/nginx.conf.template /docker/nginx.conf.template
 
-RUN chmod +x /docker/entrypoint.sh /docker/start-team-hub.sh \
+RUN chmod +x /docker/entrypoint.sh /docker/start-team-hub.sh /docker/restart-team-hub.sh \
+  && ln -sf /docker/restart-team-hub.sh /usr/local/bin/restart-team-hub \
   && mkdir -p /etc/team-hub /var/lib/postgresql/data /var/log/team-hub /var/run/team-hub \
   && chown -R postgres:postgres /var/lib/postgresql/data
 

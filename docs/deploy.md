@@ -88,13 +88,6 @@ curl -s http://127.0.0.1:8080/health
 
 Expect JSON like `{"status":"ok","version":"..."}`.
 
-Create the first admin user (one-off container sharing the same env):
-
-```bash
-docker run --rm -it team-hub:local \
-  node dist/cli.js -c /etc/team-hub/server.yaml user create --name ops --role admin
-```
-
 Note: each fresh container gets a new Postgres data directory unless you mount a volume:
 
 ```bash
@@ -102,6 +95,8 @@ docker run --rm -p 8080:8080 \
   -v team-hub-pgdata:/var/lib/postgresql/data \
   team-hub:local
 ```
+
+After the container is running, use the CLI to create an admin user — see [Using the CLI in the container](#using-the-cli-in-the-container).
 
 ## Quick start on Cloud Run (evaluation)
 
@@ -191,19 +186,137 @@ To use Firestore instead of Postgres, set `TEAM_HUB_DB_DRIVER=firestore` and mou
 
 Optional LLM proxy settings are not generated from env vars in the default template. For hub-proxied LLM access, mount a config file with an `llm` section or extend deployment tooling. See [LLM](./llm.md) and `server.yaml.example` at the repository root.
 
-## Post-deploy administration
+## Using the CLI in the container
 
-Create users and API tokens with the CLI. See [CLI — Examples](./cli.md#examples) and [Authentication](./auth.md).
+Administration commands (`user`, `migrate`, `collection`, and so on) run through the same CLI as a host install. In the Docker image, a few details differ from [Setup](./setup.md).
 
-Examples inside a running container:
+### Where the config file lives
+
+At startup the entrypoint **generates** the config at `/etc/team-hub/server.yaml`. There is no `server.yaml` in `/app` (the app working directory). The running server is started with that path explicitly.
+
+The CLI does **not** read the `TEAM_HUB_CONFIG` environment variable. You must pass the config path with `-c` / `--config`, or the CLI looks for `server.yaml` in the current directory and fails with “config file not found”.
+
+Verify the generated config inside a running container:
 
 ```bash
-# Replace CONTAINER with a local docker container id/name
-docker exec -it CONTAINER node dist/cli.js -c /etc/team-hub/server.yaml user create --name ops --role admin
-docker exec -it CONTAINER node dist/cli.js -c /etc/team-hub/server.yaml user token create USER_ID --name desktop
+docker exec CONTAINER cat /etc/team-hub/server.yaml
 ```
 
-On Cloud Run, use a Job or a temporary revision with the same env/secrets and an overridden command.
+### How to invoke the CLI
+
+The `team-hub` binary is not on `PATH` in the image. Run the built CLI with Node from `/app`:
+
+```bash
+node /app/dist/cli.js -c /etc/team-hub/server.yaml <subcommand> [options]
+```
+
+**Put global flags before the subcommand.** `-c` is a root-level option, not a subcommand option:
+
+```bash
+# Correct
+node /app/dist/cli.js -c /etc/team-hub/server.yaml user list
+
+# Wrong — "unknown option '-c'"
+node /app/dist/cli.js user list -c /etc/team-hub/server.yaml
+```
+
+### Running commands from your host
+
+Prefer one-shot `docker exec` from your machine (no interactive shell required):
+
+```bash
+docker exec -it CONTAINER \
+  node /app/dist/cli.js -c /etc/team-hub/server.yaml user list
+```
+
+Replace `CONTAINER` with the container name or id from `docker ps`.
+
+### Running commands inside the container
+
+If you open a shell with `docker exec -it CONTAINER bash`, change to `/app` first:
+
+```bash
+cd /app
+node dist/cli.js -c /etc/team-hub/server.yaml user list
+```
+
+Optional alias for an interactive session:
+
+```bash
+alias team-hub='node /app/dist/cli.js -c /etc/team-hub/server.yaml'
+team-hub user list
+```
+
+See [CLI](./cli.md) for all subcommands and options.
+
+### Restart the server after config changes
+
+Team Hub loads `server.yaml` once at startup. It does **not** hot-reload config. After you change settings, restart the Team Hub process so they take effect.
+
+| Scenario | Action |
+| -------- | ------ |
+| Edited `/etc/team-hub/server.yaml` manually (e.g. added `llm:`) | Run the restart script — **preserves** your edits |
+| Changed Docker env vars (`TEAM_HUB_DB_*`, etc.) | `docker restart CONTAINER` from the host — entrypoint **regenerates** yaml from env |
+| Full stack restart (Postgres, Redis, Nginx, Team Hub) | `docker restart CONTAINER` |
+
+The image includes a restart helper (no `pkill` required — the slim image does not ship `procps`):
+
+```bash
+# Inside the container
+/docker/restart-team-hub.sh
+# or:
+restart-team-hub
+
+# From your host
+docker exec CONTAINER /docker/restart-team-hub.sh
+```
+
+The script sends `SIGTERM` to the running Team Hub `start` process. Supervisord respawns it, runs `migrate`, then `start` with the current config. Nginx, Postgres, and Redis are **not** restarted.
+
+Verify after restart:
+
+```bash
+curl -s http://127.0.0.1:8080/health
+```
+
+### Create an admin user
+
+After the container is healthy (`GET /health` returns `{"status":"ok",...}`), create the first admin account:
+
+```bash
+docker exec -it CONTAINER \
+  node /app/dist/cli.js -c /etc/team-hub/server.yaml user create --name ops --role admin
+```
+
+List users to confirm and copy the user id:
+
+```bash
+docker exec -it CONTAINER \
+  node /app/dist/cli.js -c /etc/team-hub/server.yaml user list
+```
+
+Create an API token for HarborClient (replace `USER_ID` with the id from `user list`):
+
+```bash
+docker exec -it CONTAINER \
+  node /app/dist/cli.js -c /etc/team-hub/server.yaml user token create USER_ID --name desktop
+```
+
+See [Authentication](./auth.md) for token usage and [CLI — Examples](./cli.md#examples) for other admin tasks.
+
+### Cloud Run
+
+On Cloud Run there is no long-lived shell to `exec` into. Run admin commands with a [Cloud Run Job](https://cloud.google.com/run/docs/create-jobs) or a one-off task using the same image, environment variables, and secrets as the service — for example `node /app/dist/cli.js -c /etc/team-hub/server.yaml migrate` or `user create`.
+
+## Post-deploy administration
+
+Most day-two tasks use the CLI patterns above: always pass `-c /etc/team-hub/server.yaml` before the subcommand, and invoke `node /app/dist/cli.js` from `/app`. After editing config, [restart Team Hub](#restart-the-server-after-config-changes) before expecting new settings to apply. Common follow-ups after creating a user:
+
+- `user token create` — issue bearer tokens for HarborClient
+- `user token list` / `user token revoke` — manage tokens
+- `collection list` — inspect synced collections
+
+See [CLI](./cli.md) and [Authentication](./auth.md) for full reference.
 
 ## Health checks
 
@@ -247,6 +360,16 @@ Check Cloud Run logs or `docker logs`. Common causes:
 ### Protected API routes return 503
 
 Redis is required for auth throttling. Verify Redis is running (bundled) or reachable (Memorystore + VPC connector). See [Authentication](./auth.md).
+
+### Config file not found
+
+The CLI defaults to `server.yaml` in the current directory. In the container the generated config is at `/etc/team-hub/server.yaml`. Pass it explicitly **before** the subcommand:
+
+```bash
+node /app/dist/cli.js -c /etc/team-hub/server.yaml user list
+```
+
+If `/etc/team-hub/server.yaml` itself is missing, the container likely failed during startup — check `docker logs CONTAINER`.
 
 ### Migration errors
 

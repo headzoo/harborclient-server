@@ -45,6 +45,10 @@ export const sidebar: DefaultTheme.SidebarItem[] =
         "link": "/deploy#production-on-cloud-run"
       },
       {
+        "text": "Using the CLI in the container",
+        "link": "/deploy#using-the-cli-in-the-container"
+      },
+      {
         "text": "Post-deploy administration",
         "link": "/deploy#post-deploy-administration"
       },
