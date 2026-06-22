@@ -1,0 +1,15 @@
+server:
+  port: ${TEAM_HUB_PORT}
+  host: ${TEAM_HUB_HOST}
+
+db:
+  driver: ${TEAM_HUB_DB_DRIVER}
+  host: ${TEAM_HUB_DB_HOST}
+  port: ${TEAM_HUB_DB_PORT}
+  user: ${TEAM_HUB_DB_USER}
+  password: ${TEAM_HUB_DB_PASSWORD}
+  database: ${TEAM_HUB_DB_DATABASE}
+
+redis:
+  host: ${TEAM_HUB_REDIS_HOST}
+  port: ${TEAM_HUB_REDIS_PORT}

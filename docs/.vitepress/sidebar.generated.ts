@@ -17,8 +17,90 @@ export const sidebar: DefaultTheme.SidebarItem[] =
     "link": "/setup"
   },
   {
+    "text": "Deploy",
+    "link": "/deploy",
+    "items": [
+      {
+        "text": "What is in the container",
+        "link": "/deploy#what-is-in-the-container"
+      },
+      {
+        "text": "Prerequisites",
+        "link": "/deploy#prerequisites"
+      },
+      {
+        "text": "Build and push the image",
+        "link": "/deploy#build-and-push-the-image"
+      },
+      {
+        "text": "Local smoke test",
+        "link": "/deploy#local-smoke-test"
+      },
+      {
+        "text": "Quick start on Cloud Run (evaluation)",
+        "link": "/deploy#quick-start-on-cloud-run-evaluation"
+      },
+      {
+        "text": "Production on Cloud Run",
+        "link": "/deploy#production-on-cloud-run"
+      },
+      {
+        "text": "Post-deploy administration",
+        "link": "/deploy#post-deploy-administration"
+      },
+      {
+        "text": "Health checks",
+        "link": "/deploy#health-checks"
+      },
+      {
+        "text": "Environment variable reference",
+        "link": "/deploy#environment-variable-reference"
+      },
+      {
+        "text": "Troubleshooting",
+        "link": "/deploy#troubleshooting"
+      },
+      {
+        "text": "Related docs",
+        "link": "/deploy#related-docs"
+      }
+    ],
+    "collapsed": false
+  },
+  {
     "text": "Authentication",
     "link": "/auth"
+  },
+  {
+    "text": "LLM",
+    "link": "/llm",
+    "items": [
+      {
+        "text": "Configuration",
+        "link": "/llm#configuration"
+      },
+      {
+        "text": "User access",
+        "link": "/llm#user-access"
+      },
+      {
+        "text": "Agent loop",
+        "link": "/llm#agent-loop"
+      },
+      {
+        "text": "Monthly limits",
+        "link": "/llm#monthly-limits"
+      },
+      {
+        "text": "Usage logging",
+        "link": "/llm#usage-logging"
+      },
+      {
+        "text": "Endpoints",
+        "link": "/llm#endpoints"
+      }
+    ],
+    "collapsed": false
   },
   {
     "text": "CLI",
@@ -43,6 +125,10 @@ export const sidebar: DefaultTheme.SidebarItem[] =
       {
         "text": "collection list",
         "link": "/cli#collection-list"
+      },
+      {
+        "text": "llm list",
+        "link": "/cli#llm-list"
       },
       {
         "text": "user",
@@ -201,6 +287,25 @@ export const sidebar: DefaultTheme.SidebarItem[] =
           {
             "text": "PUT /requests/:id/move",
             "link": "/endpoints#put-requestsidmove"
+          }
+        ],
+        "collapsed": false
+      },
+      {
+        "text": "LLM routes",
+        "link": "/endpoints#llm-routes",
+        "items": [
+          {
+            "text": "GET /llm/models",
+            "link": "/endpoints#get-llmmodels"
+          },
+          {
+            "text": "GET /llm/usage",
+            "link": "/endpoints#get-llmusage"
+          },
+          {
+            "text": "POST /llm/chat/step",
+            "link": "/endpoints#post-llmchatstep"
           }
         ],
         "collapsed": false

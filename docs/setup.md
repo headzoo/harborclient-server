@@ -15,13 +15,15 @@ Copy the example config and adjust it for your environment:
 cp server.yaml.example server.yaml
 ```
 
-`server.yaml` requires `server`, `db`, and `redis` sections. See [`server.yaml.example`](../server.yaml.example) for Postgres, MySQL, and Firestore options.
+`server.yaml` requires `server`, `db`, and `redis` sections. See `server.yaml.example` at the repository root for Postgres, MySQL, and Firestore options.
 
-For local development, start Postgres and Redis with Docker Compose (Team Hub itself is not containerized in this repo):
+For local development, start Postgres and Redis with Docker Compose:
 
 ```bash
 docker compose up -d
 ```
+
+For a ready-to-run container (Nginx, Team Hub, Postgres, and Redis) or Cloud Run deployment, see [Deploy](./deploy.md).
 
 Apply database migrations before starting the server or running admin commands:
 

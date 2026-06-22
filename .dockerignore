@@ -1,0 +1,12 @@
+node_modules
+dist
+*.log
+.eslintcache
+.DS_Store
+.git
+.gitignore
+docs/.vitepress/cache
+docs/.vitepress/dist
+server.yaml
+*.md
+!docs/deploy.md

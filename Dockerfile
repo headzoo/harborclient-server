@@ -1,0 +1,64 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-bookworm-slim AS builder
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json tsup.config.ts ./
+COPY src ./src
+
+RUN pnpm build
+RUN pnpm prune --prod
+
+FROM node:24-bookworm-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    gettext-base \
+    nginx \
+    postgresql \
+    postgresql-contrib \
+    redis-server \
+    supervisor \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -f /etc/nginx/sites-enabled/default
+
+ENV PORT=8080 \
+  TEAM_HUB_PORT=8787 \
+  TEAM_HUB_HOST=127.0.0.1 \
+  TEAM_HUB_CONFIG=/etc/team-hub/server.yaml \
+  TEAM_HUB_START_POSTGRES=true \
+  TEAM_HUB_START_REDIS=true \
+  TEAM_HUB_DB_DRIVER=postgres \
+  TEAM_HUB_DB_HOST=127.0.0.1 \
+  TEAM_HUB_DB_PORT=5432 \
+  TEAM_HUB_DB_USER=harbor \
+  TEAM_HUB_DB_PASSWORD=harbor \
+  TEAM_HUB_DB_DATABASE=harbor \
+  TEAM_HUB_REDIS_HOST=127.0.0.1 \
+  TEAM_HUB_REDIS_PORT=6379 \
+  PGDATA=/var/lib/postgresql/data
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+COPY docker/entrypoint.sh /docker/entrypoint.sh
+COPY docker/start-team-hub.sh /docker/start-team-hub.sh
+COPY docker/server.yaml.template /docker/server.yaml.template
+COPY docker/nginx.conf.template /docker/nginx.conf.template
+
+RUN chmod +x /docker/entrypoint.sh /docker/start-team-hub.sh \
+  && mkdir -p /etc/team-hub /var/lib/postgresql/data /var/log/team-hub /var/run/team-hub \
+  && chown -R postgres:postgres /var/lib/postgresql/data
+
+EXPOSE 8080
+
+ENTRYPOINT ["/docker/entrypoint.sh"]
