@@ -10,7 +10,7 @@ vi.mock('mysql2/promise', () => ({
   }
 }));
 
-import { MysqlDatabase } from '#/db/MysqlDatabase.js';
+import { MysqlDatabase } from '#/db/mysql/MysqlDatabase.js';
 
 const validConfig = {
   driver: 'mysql',
@@ -34,6 +34,7 @@ function createMockPool() {
 
   return {
     getConnection: vi.fn().mockResolvedValue(connection),
+    execute: vi.fn().mockResolvedValue([[], { affectedRows: 0 }]),
     end: vi.fn().mockResolvedValue(undefined),
     connection
   };
@@ -121,5 +122,39 @@ describe('MysqlDatabase lifecycle', () => {
     const db = MysqlDatabase.fromConfig(validConfig);
 
     await expect(db.disconnect()).resolves.toBeUndefined();
+  });
+});
+
+describe('MysqlDatabase api tokens', () => {
+  it('runs migrate SQL against the pool', async () => {
+    const pool = createMockPool();
+    createPoolMock.mockReturnValue(pool);
+    const db = MysqlDatabase.fromConfig(validConfig);
+
+    await db.connect();
+    await db.migrate();
+
+    expect(pool.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS api_tokens'),
+      []
+    );
+
+    await db.disconnect();
+  });
+
+  it('throws when api token methods are called before connect', async () => {
+    const db = MysqlDatabase.fromConfig(validConfig);
+
+    await expect(
+      db.createApiToken({
+        id: 'id',
+        name: 'name',
+        tokenHash: 'hash',
+        tokenPrefix: 'prefix',
+        createdAt: new Date(),
+        lastUsedAt: null,
+        revokedAt: null
+      })
+    ).rejects.toThrow('MySQL database is not connected.');
   });
 });

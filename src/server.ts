@@ -98,7 +98,7 @@ export async function runServer(
   config: ServerConfig,
   options: RunServerOptions
 ): Promise<FastifyInstance> {
-  const app = await createServer(config, { verbose: options.verbose });
+  const app = await createServer(config, { verbose: options.verbose, db: options.db });
 
   await options.db.connect();
 

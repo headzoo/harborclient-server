@@ -14,6 +14,7 @@ const { PoolMock } = vi.hoisted(() => {
     };
 
     connect = vi.fn().mockImplementation(async () => this.client);
+    query = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
     end = vi.fn().mockResolvedValue(undefined);
 
     /**
@@ -21,7 +22,7 @@ const { PoolMock } = vi.hoisted(() => {
      *
      * @param config - Connection settings passed to the pool constructor.
      */
-    constructor(public readonly config: unknown) { }
+    constructor(public readonly config: unknown) {}
   }
 
   return {
@@ -35,7 +36,7 @@ vi.mock('pg', () => ({
   }
 }));
 
-import { PostgresDatabase } from '#/db/PostgresDatabase.js';
+import { PostgresDatabase } from '#/db/postgres/PostgresDatabase.js';
 
 const validConfig = {
   driver: 'postgres',
@@ -129,5 +130,38 @@ describe('PostgresDatabase lifecycle', () => {
     const db = PostgresDatabase.fromConfig(validConfig);
 
     await expect(db.disconnect()).resolves.toBeUndefined();
+  });
+});
+
+describe('PostgresDatabase api tokens', () => {
+  it('runs migrate SQL against the pool', async () => {
+    const db = PostgresDatabase.fromConfig(validConfig);
+
+    await db.connect();
+    await db.migrate();
+
+    const pool = PoolMock.mock.instances[0];
+    expect(pool.query).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS api_tokens'),
+      []
+    );
+
+    await db.disconnect();
+  });
+
+  it('throws when api token methods are called before connect', async () => {
+    const db = PostgresDatabase.fromConfig(validConfig);
+
+    await expect(
+      db.createApiToken({
+        id: 'id',
+        name: 'name',
+        tokenHash: 'hash',
+        tokenPrefix: 'prefix',
+        createdAt: new Date(),
+        lastUsedAt: null,
+        revokedAt: null
+      })
+    ).rejects.toThrow('Postgres database is not connected.');
   });
 });

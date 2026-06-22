@@ -1,7 +1,7 @@
 import type { IDatabase } from '#/db/IDatabase.js';
-import { FirestoreDatabase } from '#/db/FirestoreDatabase.js';
-import { MysqlDatabase } from '#/db/MysqlDatabase.js';
-import { PostgresDatabase } from '#/db/PostgresDatabase.js';
+import { FirestoreDatabase } from '#/db/firestore/FirestoreDatabase.js';
+import { MysqlDatabase } from '#/db/mysql/MysqlDatabase.js';
+import { PostgresDatabase } from '#/db/postgres/PostgresDatabase.js';
 
 /**
  * Reads the `driver` field from a raw db config mapping.

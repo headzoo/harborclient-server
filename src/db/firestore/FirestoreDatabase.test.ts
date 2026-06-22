@@ -7,13 +7,24 @@ const { FirestoreMock } = vi.hoisted(() => {
   class MockFirestore {
     listCollections = vi.fn().mockResolvedValue([]);
     terminate = vi.fn().mockResolvedValue(undefined);
+    collection = vi.fn().mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        set: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue({ exists: false }),
+        update: vi.fn().mockResolvedValue(undefined)
+      }),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue({ docs: [] })
+    });
 
     /**
      * Captures Firestore construction config for assertions.
      *
      * @param config - Client settings passed to the Firestore constructor.
      */
-    constructor(public readonly config: unknown) { }
+    constructor(public readonly config: unknown) {}
   }
 
   return {
@@ -25,7 +36,7 @@ vi.mock('@google-cloud/firestore', () => ({
   Firestore: FirestoreMock
 }));
 
-import { FirestoreDatabase } from '#/db/FirestoreDatabase.js';
+import { FirestoreDatabase } from '#/db/firestore/FirestoreDatabase.js';
 
 beforeEach(() => {
   FirestoreMock.mockClear();
@@ -115,5 +126,37 @@ describe('FirestoreDatabase lifecycle', () => {
     });
 
     await expect(db.disconnect()).resolves.toBeUndefined();
+  });
+});
+
+describe('FirestoreDatabase api tokens', () => {
+  it('does not require migrate work', async () => {
+    const db = FirestoreDatabase.fromConfig({
+      driver: 'firestore',
+      projectId: 'my-project'
+    });
+
+    await db.connect();
+    await expect(db.migrate()).resolves.toBeUndefined();
+    await db.disconnect();
+  });
+
+  it('throws when api token methods are called before connect', async () => {
+    const db = FirestoreDatabase.fromConfig({
+      driver: 'firestore',
+      projectId: 'my-project'
+    });
+
+    await expect(
+      db.createApiToken({
+        id: 'id',
+        name: 'name',
+        tokenHash: 'hash',
+        tokenPrefix: 'prefix',
+        createdAt: new Date(),
+        lastUsedAt: null,
+        revokedAt: null
+      })
+    ).rejects.toThrow('Firestore database is not connected.');
   });
 });

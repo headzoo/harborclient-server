@@ -22,6 +22,8 @@ vi.mock('#/db/index.js', async (importOriginal) => {
 });
 
 import { createProgram } from '#/cli/program.js';
+import { migrateCommand } from '#/cli/migrateCommand.js';
+import { tokenCreateCommand, tokenListCommand, tokenRevokeCommand } from '#/cli/tokenCommand.js';
 import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
 import type { IDatabase } from '#/db/index.js';
 import { startCommand, runServer } from '#/server.js';
@@ -34,7 +36,13 @@ import { startCommand, runServer } from '#/server.js';
 function createMockDatabase(): IDatabase {
   return {
     connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn().mockResolvedValue(undefined)
+    disconnect: vi.fn().mockResolvedValue(undefined),
+    migrate: vi.fn().mockResolvedValue(undefined),
+    createApiToken: vi.fn().mockResolvedValue(undefined),
+    findActiveApiTokenByHash: vi.fn().mockResolvedValue(null),
+    listApiTokens: vi.fn().mockResolvedValue([]),
+    revokeApiToken: vi.fn().mockResolvedValue(false),
+    touchApiTokenLastUsed: vi.fn().mockResolvedValue(undefined)
   };
 }
 
@@ -114,6 +122,8 @@ describe('createProgram', () => {
     const output = write.mock.calls.map((call) => String(call[0])).join('');
     expect(output).toContain('harborclient-server');
     expect(output).toContain('start');
+    expect(output).toContain('migrate');
+    expect(output).toContain('token');
     expect(output).toContain('--verbose');
     expect(output).toContain('--config');
 
@@ -168,6 +178,8 @@ ${sampleDbSection}`);
   host: 0.0.0.0
 ${sampleDbSection}`);
     createServerMock.mockResolvedValue(createMockApp({ address: '0.0.0.0', port: 8787 }));
+    const db = createMockDatabase();
+    createDatabaseMock.mockReturnValue(db);
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await startCommand({ config: configPath, verbose: true });
@@ -197,7 +209,7 @@ ${sampleDbSection}`);
           database: 'harbor'
         }
       },
-      { verbose: true }
+      { verbose: true, db }
     );
     expect(log).toHaveBeenCalledWith('Starting server with config:', {
       port: 8787,
@@ -256,11 +268,99 @@ describe('runServer', () => {
           database: 'harbor'
         }
       },
-      {}
+      { db }
     );
     expect(db.connect).toHaveBeenCalledOnce();
     expect(app.listen).toHaveBeenCalledWith({ host: '127.0.0.1', port: 8787 });
     expect(log).toHaveBeenCalledWith('HarborClient server listening on http://127.0.0.1:8787');
+
+    log.mockRestore();
+  });
+});
+
+describe('migrateCommand', () => {
+  it('connects, migrates, and disconnects from the database', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}`);
+    const db = createMockDatabase();
+    createDatabaseMock.mockReturnValue(db);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await migrateCommand({ config: configPath });
+
+    expect(db.connect).toHaveBeenCalledOnce();
+    expect(db.migrate).toHaveBeenCalledOnce();
+    expect(db.disconnect).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledWith('Database migration completed successfully.');
+
+    log.mockRestore();
+  });
+});
+
+describe('token commands', () => {
+  it('creates a token and prints the one-time secret', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}`);
+    const db = createMockDatabase();
+    createDatabaseMock.mockReturnValue(db);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await tokenCreateCommand({ config: configPath, name: 'Alice laptop' });
+
+    expect(db.connect).toHaveBeenCalledOnce();
+    expect(db.createApiToken).toHaveBeenCalledOnce();
+    expect(db.disconnect).toHaveBeenCalledOnce();
+    expect(log.mock.calls.some((call) => String(call[0]).startsWith('hbk_'))).toBe(true);
+
+    log.mockRestore();
+  });
+
+  it('lists stored tokens', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}`);
+    const db = createMockDatabase();
+    db.listApiTokens = vi.fn().mockResolvedValue([
+      {
+        id: 'token-1',
+        name: 'Alice laptop',
+        tokenHash: 'hash',
+        tokenPrefix: 'hbk_AbCd1234',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        lastUsedAt: null,
+        revokedAt: null
+      }
+    ]);
+    createDatabaseMock.mockReturnValue(db);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await tokenListCommand({ config: configPath });
+
+    expect(db.listApiTokens).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledWith('- id: token-1');
+
+    log.mockRestore();
+  });
+
+  it('reports when a token is revoked', async () => {
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}`);
+    const db = createMockDatabase();
+    db.revokeApiToken = vi.fn().mockResolvedValue(true);
+    createDatabaseMock.mockReturnValue(db);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await tokenRevokeCommand({ config: configPath, id: 'token-1' });
+
+    expect(db.revokeApiToken).toHaveBeenCalledWith('token-1');
+    expect(log).toHaveBeenCalledWith('Revoked API token token-1.');
 
     log.mockRestore();
   });

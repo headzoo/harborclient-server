@@ -17,6 +17,10 @@ export const sidebar: DefaultTheme.SidebarItem[] =
     "link": "/setup"
   },
   {
+    "text": "Authentication",
+    "link": "/auth"
+  },
+  {
     "text": "Development",
     "link": "/development"
   },

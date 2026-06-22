@@ -1,5 +1,12 @@
 import { Command } from 'commander';
 import { DEFAULT_CONFIG_PATH } from '#/config/serverConfig.js';
+import { registerMigrateCommand, type MigrateCommandOptions } from '#/cli/migrateCommand.js';
+import {
+  registerTokenCommand,
+  type TokenCommandOptions,
+  type TokenCreateCommandOptions,
+  type TokenRevokeCommandOptions
+} from '#/cli/tokenCommand.js';
 import { registerStartCommand, type StartCommandOptions } from '#/server.js';
 
 export interface ProgramDependencies {
@@ -7,6 +14,20 @@ export interface ProgramDependencies {
    * Optional override for the start subcommand handler (used in tests).
    */
   startCommand?: (options: StartCommandOptions) => Promise<void>;
+
+  /**
+   * Optional override for the migrate subcommand handler (used in tests).
+   */
+  migrateCommand?: (options: MigrateCommandOptions) => Promise<void>;
+
+  /**
+   * Optional overrides for token subcommand handlers (used in tests).
+   */
+  tokenCommand?: {
+    create?: (options: TokenCreateCommandOptions) => Promise<void>;
+    list?: (options: TokenCommandOptions) => Promise<void>;
+    revoke?: (options: TokenRevokeCommandOptions) => Promise<void>;
+  };
 }
 
 /**
@@ -33,6 +54,8 @@ export function createProgram(version: string, deps: ProgramDependencies = {}): 
     );
 
   registerStartCommand(program, deps.startCommand);
+  registerMigrateCommand(program, deps.migrateCommand);
+  registerTokenCommand(program, deps.tokenCommand);
 
   return program;
 }

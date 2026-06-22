@@ -6,6 +6,7 @@ import {
   type ZodTypeProvider
 } from 'fastify-type-provider-zod';
 import type { ServerConfig } from '#/config/serverConfig.js';
+import type { IDatabase } from '#/db/IDatabase.js';
 import { registerRoutes } from '#/server/routes/index.js';
 
 export interface CreateServerOptions {
@@ -18,6 +19,11 @@ export interface CreateServerOptions {
    * Package version exposed on the health endpoint (defaults to package.json).
    */
   version?: string;
+
+  /**
+   * Database used for bearer token validation on protected routes.
+   */
+  db: IDatabase;
 }
 
 /**
@@ -38,12 +44,12 @@ function readPackageVersion(): string {
  * Does not call `listen`; use {@link runServer} or test inject for that.
  *
  * @param _config - Server bind settings (reserved for future route/plugin use).
- * @param options - Logger and version overrides.
+ * @param options - Logger, version, and database overrides.
  * @returns Fastify app with type provider and routes attached.
  */
 export async function createServer(
   _config: ServerConfig,
-  options: CreateServerOptions = {}
+  options: CreateServerOptions
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.verbose ?? false
@@ -53,7 +59,8 @@ export async function createServer(
   app.setSerializerCompiler(serializerCompiler);
 
   await registerRoutes(app, {
-    version: options.version ?? readPackageVersion()
+    version: options.version ?? readPackageVersion(),
+    db: options.db
   });
 
   return app;
