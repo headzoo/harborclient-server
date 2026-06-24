@@ -1,6 +1,6 @@
 ![Team Hub](images/logo.png)
 
-**Full documentation:** [https://headzoo.github.io/harborclient-team-hub/](https://headzoo.github.io/harborclient-team-hub/)
+**Full documentation:** [https://harborclient.github.io/team-hub/](https://harborclient.github.io/team-hub/)
 
 **Linux CLI server for shared HarborClient storage and team workflows.**
 
@@ -12,12 +12,12 @@
 
 ## Documentation
 
-| Topic           | Link                                                                           |
-| --------------- | ------------------------------------------------------------------------------ |
-| Getting started | [Introduction](https://headzoo.github.io/harborclient-team-hub/)               |
-| Prerequisites   | [Prerequisites](https://headzoo.github.io/harborclient-team-hub/prerequisites) |
-| Setup           | [Setup](https://headzoo.github.io/harborclient-team-hub/setup)                 |
-| Development     | [Development](https://headzoo.github.io/harborclient-team-hub/development)     |
+| Topic           | Link                                                                   |
+| --------------- | ---------------------------------------------------------------------- |
+| Getting started | [Introduction](https://harborclient.github.io/team-hub/)               |
+| Prerequisites   | [Prerequisites](https://harborclient.github.io/team-hub/prerequisites) |
+| Setup           | [Setup](https://harborclient.github.io/team-hub/setup)                 |
+| Development     | [Development](https://harborclient.github.io/team-hub/development)     |
 
 Canonical docs live in [`docs/`](./docs/). Edit those pages directly, then run `pnpm docs:build:nav` to refresh the VitePress sidebar.
 

@@ -4,7 +4,7 @@ import pkg from '../../package.json';
 import { toAnchor } from '../../scripts/docs-slugger.mjs';
 import { sidebar } from './sidebar.generated';
 
-const siteBase = '/harborclient-team-hub/';
+const siteBase = '/team-hub/';
 
 const withSiteBase = (path: string) => {
   if (!path.startsWith('/') || path.startsWith(siteBase) || path.startsWith('//')) {
@@ -93,13 +93,13 @@ export default withMermaid(
       nav: [
         {
           text: `v${pkg.version}`,
-          link: 'https://github.com/headzoo/harborclient-team-hub/releases',
+          link: 'https://github.com/harborclient/team-hub/releases',
         },
       ],
       socialLinks: [
         {
           icon: 'github',
-          link: 'https://github.com/headzoo/harborclient-team-hub',
+          link: 'https://github.com/harborclient/team-hub',
           ariaLabel: 'Team Hub on GitHub',
         },
       ],

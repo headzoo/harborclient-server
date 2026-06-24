@@ -209,6 +209,42 @@ export const sidebar: DefaultTheme.SidebarItem[] =
           {
             "text": "GET /admin/users",
             "link": "/endpoints#get-adminusers"
+          },
+          {
+            "text": "PUT /admin/users/:id",
+            "link": "/endpoints#put-adminusersid"
+          },
+          {
+            "text": "DELETE /admin/users/:id",
+            "link": "/endpoints#delete-adminusersid"
+          },
+          {
+            "text": "POST /admin/users",
+            "link": "/endpoints#post-adminusers"
+          },
+          {
+            "text": "GET /admin/tokens",
+            "link": "/endpoints#get-admintokens"
+          },
+          {
+            "text": "POST /admin/users/:id/tokens",
+            "link": "/endpoints#post-adminusersidtokens"
+          },
+          {
+            "text": "DELETE /admin/tokens/:id",
+            "link": "/endpoints#delete-admintokensid"
+          },
+          {
+            "text": "GET /admin/collections",
+            "link": "/endpoints#get-admincollections"
+          },
+          {
+            "text": "GET /admin/environments",
+            "link": "/endpoints#get-adminenvironments"
+          },
+          {
+            "text": "GET /admin/llm/models",
+            "link": "/endpoints#get-adminllmmodels"
           }
         ],
         "collapsed": false
