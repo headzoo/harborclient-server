@@ -1,12 +1,17 @@
 import { Command } from 'commander';
 import type { FastifyInstance } from 'fastify';
 import { mergeGlobalOptions } from '#/cli/globalOptions.js';
-import type { ServerConfig } from '#/config/serverConfig.js';
-import { loadServerConfig } from '#/config/serverConfig.js';
-import { createDatabase, type IDatabase } from '#/db/index.js';
+import { loadServerConfig, resolveConfigPath } from '#/config/serverConfig.js';
 import { createServer } from '#/index.js';
-import { createThrottleStore } from '#/server/auth/throttle/createThrottleStore.js';
-import type { IThrottleStore } from '#/server/auth/throttle/IThrottleStore.js';
+import {
+  connectRuntimeContext,
+  createRuntimeContext,
+  disconnectAll,
+  logConfigReloadResult,
+  reloadRuntimeConfig,
+  type ReloadResult,
+  type RuntimeContext
+} from '#/server/runtimeContext.js';
 
 export interface StartCommandOptions {
   /**
@@ -25,16 +30,6 @@ export interface RunServerOptions {
    * When true, logs resolved config and enables Fastify request logging.
    */
   verbose?: boolean;
-
-  /**
-   * Database instance to connect before listen and disconnect on shutdown.
-   */
-  db: IDatabase;
-
-  /**
-   * Throttle store to connect before listen and disconnect on shutdown.
-   */
-  throttleStore: IThrottleStore;
 }
 
 /**
@@ -64,14 +59,9 @@ function formatListenAddress(address: string | null, port: number): string {
  * Registers SIGINT and SIGTERM handlers that close the Fastify instance cleanly.
  *
  * @param app - Running Fastify server to shut down on signal.
- * @param db - Database to disconnect during shutdown.
- * @param throttleStore - Throttle store to disconnect during shutdown.
+ * @param ctx - Runtime context whose connections are closed during shutdown.
  */
-function registerGracefulShutdown(
-  app: FastifyInstance,
-  db: IDatabase,
-  throttleStore: IThrottleStore
-): void {
+function registerGracefulShutdown(app: FastifyInstance, ctx: RuntimeContext): void {
   /**
    * Closes the server and exits the process after a termination signal.
    *
@@ -80,8 +70,7 @@ function registerGracefulShutdown(
   const shutdown = async (signal: NodeJS.Signals) => {
     app.log.info(`Received ${signal}, shutting down.`);
     await app.close();
-    await db.disconnect();
-    await throttleStore.disconnect();
+    await disconnectAll(ctx);
     process.exit(0);
   };
 
@@ -101,41 +90,60 @@ function registerGracefulShutdown(
 }
 
 /**
+ * Registers a repeatable SIGHUP handler that reloads server.yaml at runtime.
+ *
+ * @param reloadConfig - Shared reload handler that logs results and returns the report.
+ */
+function registerConfigReloadHandler(reloadConfig: () => Promise<ReloadResult>): void {
+  process.on('SIGHUP', () => {
+    void reloadConfig();
+  });
+}
+
+/**
  * Creates, listens on, and runs the Team Hub HTTP server until shutdown.
  *
- * @param config - Validated host and port from the config file.
- * @param options - Runtime options such as verbose logging and the database instance.
+ * @param ctx - Runtime context with bind settings and swappable connections.
+ * @param options - Runtime options such as verbose logging.
  * @returns The listening Fastify instance (also registered for graceful shutdown).
  */
 export async function runServer(
-  config: ServerConfig,
-  options: RunServerOptions
+  ctx: RuntimeContext,
+  options: RunServerOptions = {}
 ): Promise<FastifyInstance> {
-  const app = await createServer(config, {
+  /**
+   * Reloads server.yaml, logs the outcome, and returns the per-section report.
+   */
+  const reloadConfig = async (): Promise<ReloadResult> => {
+    const result = await reloadRuntimeConfig(ctx);
+    logConfigReloadResult(result);
+    return result;
+  };
+
+  const app = await createServer(ctx, {
     verbose: options.verbose,
-    db: options.db,
-    throttleStore: options.throttleStore
+    reloadConfig
   });
 
-  await options.db.connect();
-  await options.throttleStore.connect();
+  await connectRuntimeContext(ctx);
 
   await app.listen({
-    host: config.host,
-    port: config.port
+    host: ctx.host,
+    port: ctx.port
   });
 
   const address = app.server.address();
-  const port = typeof address === 'object' && address ? address.port : config.port;
-  const host = typeof address === 'object' && address ? address.address : config.host;
+  const port = typeof address === 'object' && address ? address.port : ctx.port;
+  const host = typeof address === 'object' && address ? address.address : ctx.host;
 
   if (options.verbose) {
-    console.log('Starting server with config:', config);
+    console.log('Starting server with config path:', ctx.configPath);
   }
 
   console.log(`Team Hub listening on ${formatListenAddress(host, port)}`);
 
-  registerGracefulShutdown(app, options.db, options.throttleStore);
+  registerGracefulShutdown(app, ctx);
+  registerConfigReloadHandler(reloadConfig);
 
   return app;
 }
@@ -146,10 +154,10 @@ export async function runServer(
  * @param options - Parsed start command options including config path.
  */
 export async function startCommand(options: StartCommandOptions): Promise<void> {
+  const configPath = resolveConfigPath(options.config);
   const config = loadServerConfig(options.config);
-  const db = createDatabase(config.db);
-  const throttleStore = createThrottleStore(config.redis);
-  await runServer(config, { verbose: options.verbose, db, throttleStore });
+  const ctx = createRuntimeContext(config, configPath);
+  await runServer(ctx, { verbose: options.verbose });
 }
 
 /**

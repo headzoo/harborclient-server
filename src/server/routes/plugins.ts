@@ -8,9 +8,9 @@ import { pluginSourcesResponseSchema } from '#/server/routes/schemas/plugins.js'
  */
 export interface RegisterPluginsRoutesOptions {
   /**
-   * Normalized plugin source configuration from server.yaml, or null when unset.
+   * Returns the current normalized plugin source configuration from server.yaml.
    */
-  plugins: PluginsConfig | null;
+  getPlugins: () => PluginsConfig | null;
 }
 
 /**
@@ -37,7 +37,8 @@ export async function registerPluginsRoutes(
      * Returns plugin catalog and trusted-publisher URLs configured on this Team Hub.
      */
     handler: async (_request, reply) => {
-      if (!options.plugins) {
+      const plugins = options.getPlugins();
+      if (!plugins) {
         return reply.send({
           catalogs: [],
           trusted: []
@@ -45,8 +46,8 @@ export async function registerPluginsRoutes(
       }
 
       return reply.send({
-        catalogs: options.plugins.catalogs,
-        trusted: options.plugins.trusted
+        catalogs: plugins.catalogs,
+        trusted: plugins.trusted
       });
     }
   });

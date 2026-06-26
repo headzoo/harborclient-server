@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import type { LlmConfig } from '#/config/llmConfig.js';
 import type { IDatabase } from '#/db/IDatabase.js';
 import type { UserRole } from '#/db/types.js';
 import { isSystemUser } from '#/db/systemUsers.js';
@@ -27,12 +26,15 @@ import {
   listAdminLlmModelsResponseSchema,
   listAdminTokensResponseSchema,
   listAdminUsersResponseSchema,
+  reloadConfigResponseSchema,
   serializeApiToken,
   serializeHubUser,
   updateAdminUserBodySchema
 } from '#/server/routes/schemas/admin.js';
 import { errorResponseSchema, idParamSchema } from '#/server/routes/schemas/common.js';
 import { emptyResponseSchema } from '#/server/routes/schemas/entities.js';
+import type { LlmConfig } from '#/config/llmConfig.js';
+import type { ReloadResult } from '#/server/runtimeContext.js';
 
 /**
  * Options for registering management routes.
@@ -44,9 +46,14 @@ export interface RegisterAdminRoutesOptions {
   db: IDatabase;
 
   /**
-   * Normalized LLM configuration from server.yaml, or null when unset.
+   * Returns the current normalized LLM configuration from server.yaml.
    */
-  llm: LlmConfig | null;
+  getLlm: () => LlmConfig | null;
+
+  /**
+   * Reloads server.yaml and returns a per-section report.
+   */
+  reloadConfig: () => Promise<ReloadResult>;
 }
 
 /**
@@ -141,7 +148,7 @@ export async function registerAdminRoutes(
   app: FastifyInstance,
   options: RegisterAdminRoutesOptions
 ): Promise<void> {
-  const { db, llm } = options;
+  const { db, getLlm, reloadConfig } = options;
   const routes = app.withTypeProvider<ZodTypeProvider>();
 
   routes.route({
@@ -164,6 +171,7 @@ export async function registerAdminRoutes(
         }
 
         const systemUserId = db.getSystemUserId();
+        const llm = getLlm();
         const [users, collections, environments] = await Promise.all([
           db.listUsers(),
           db.listCollections(),
@@ -222,6 +230,7 @@ export async function registerAdminRoutes(
         }
 
         const input = buildAdminUserCreateInput(request.body);
+        const llm = getLlm();
         const [collections, environments] = await Promise.all([
           db.listCollections(),
           db.listEnvironments()
@@ -346,6 +355,7 @@ export async function registerAdminRoutes(
      * Lists all hub-offered LLM models for operator user management.
      */
     handler: async (request, reply) => {
+      const llm = getLlm();
       if (!llm) {
         return sendLlmUnavailable(reply);
       }
@@ -407,6 +417,7 @@ export async function registerAdminRoutes(
 
         const input = buildAdminUserUpdateInput(existing, request.body);
         const role = request.body.role ?? existing.role;
+        const llm = getLlm();
         const [collections, environments] = await Promise.all([
           db.listCollections(),
           db.listEnvironments()
@@ -617,6 +628,34 @@ export async function registerAdminRoutes(
 
         throw error;
       }
+    }
+  });
+
+  routes.route({
+    method: 'POST',
+    url: '/admin/config/reload',
+    schema: {
+      response: {
+        200: reloadConfigResponseSchema,
+        400: reloadConfigResponseSchema,
+        403: errorResponseSchema
+      }
+    },
+    /**
+     * Re-reads server.yaml and applies reloadable config sections on a best-effort basis.
+     */
+    handler: async (request, reply) => {
+      const user = requireAuthenticatedUser(request);
+      if (denyUnlessAllowed(reply, canUseManagementApi(user))) {
+        return;
+      }
+
+      const result = await reloadConfig();
+      if (result.fatalError) {
+        return reply.code(400).send(result);
+      }
+
+      return reply.send(result);
     }
   });
 }

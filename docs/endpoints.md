@@ -406,6 +406,37 @@ curl -s http://127.0.0.1:8788/admin/llm/models \
   -H "Authorization: Bearer hbk_your_admin_token_here"
 ```
 
+### POST /admin/config/reload
+
+Re-reads `server.yaml` and applies reloadable sections (`db`, `redis`, `llm`, `plugins`) without restarting the process. Changes to `server.host` or `server.port` are reported as `restart-required` and are not applied live.
+
+**Auth:** Bearer token required (`admin` role).
+
+**Response `200`:** Reload attempted; see per-section `status` values (`reloaded`, `unchanged`, `failed`, `restart-required`).
+
+**Response `400`:** Config file missing or invalid; nothing was changed. Includes `fatalError`.
+
+**Response `403`:** Authenticated `user`-role token.
+
+```bash
+curl -s -X POST http://127.0.0.1:8788/admin/config/reload \
+  -H "Authorization: Bearer hbk_your_admin_token_here"
+```
+
+Example response:
+
+```json
+{
+  "sections": [
+    { "section": "db", "status": "unchanged" },
+    { "section": "redis", "status": "unchanged" },
+    { "section": "llm", "status": "reloaded" },
+    { "section": "plugins", "status": "reloaded" },
+    { "section": "server", "status": "unchanged" }
+  ]
+}
+```
+
 ## Collections
 
 Collections are top-level workspaces that hold folders, saved requests, and collection-scoped defaults (variables, headers, scripts, auth).

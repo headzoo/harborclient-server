@@ -30,9 +30,9 @@ export interface RegisterLlmRoutesOptions {
   db: IDatabase;
 
   /**
-   * Normalized LLM configuration from server.yaml, or null when unset.
+   * Returns the current normalized LLM configuration from server.yaml.
    */
-  llm: LlmConfig | null;
+  getLlm: () => LlmConfig | null;
 }
 
 /**
@@ -83,7 +83,8 @@ export async function registerLlmRoutes(
      * Lists hub-offered models the authenticated user may use.
      */
     handler: async (request, reply) => {
-      if (!options.llm) {
+      const llm = options.getLlm();
+      if (!llm) {
         return sendLlmUnavailable(reply);
       }
 
@@ -92,7 +93,7 @@ export async function registerLlmRoutes(
         return;
       }
 
-      const offered = listHubOfferedModels(options.llm).filter((model) =>
+      const offered = listHubOfferedModels(llm).filter((model) =>
         isLlmModelAllowed(user, model.id)
       );
 
@@ -120,7 +121,8 @@ export async function registerLlmRoutes(
      * Returns the authenticated user's current monthly LLM usage summary.
      */
     handler: async (request, reply) => {
-      if (!options.llm) {
+      const llm = options.getLlm();
+      if (!llm) {
         return sendLlmUnavailable(reply);
       }
 
@@ -156,7 +158,8 @@ export async function registerLlmRoutes(
      * Runs one stateless LLM completion step using hub-configured provider keys.
      */
     handler: async (request, reply) => {
-      if (!options.llm) {
+      const llm = options.getLlm();
+      if (!llm) {
         return sendLlmUnavailable(reply);
       }
 
@@ -167,7 +170,7 @@ export async function registerLlmRoutes(
 
       const { model, messages, tools, systemPrompt } = request.body;
 
-      if (!isHubModelOffered(options.llm, model)) {
+      if (!isHubModelOffered(llm, model)) {
         return reply.code(403).send({ error: 'Model is not offered by this Team Hub.' });
       }
 
@@ -185,7 +188,7 @@ export async function registerLlmRoutes(
         return sendMonthlyLimitExceeded(reply);
       }
 
-      const result = await runLlmCompletion(options.llm, {
+      const result = await runLlmCompletion(llm, {
         model,
         messages,
         tools,

@@ -2,7 +2,10 @@
 # Copy to server.yaml and adjust for your environment.
 #
 # Required sections: server, db, redis
-# Optional section: llm (hub-proxied LLM access for HarborClient)
+# Optional sections: llm, plugins
+#
+# While team-hub start is running, db/redis/llm/plugins reload live via SIGHUP or
+# POST /admin/config/reload. Changes to server.host or server.port require a restart.
 
 # HTTP listen address for the Team Hub API.
 server:

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createStubDatabase } from '#/db/stubDatabase.js';
 import { DuplicateUserNameError, ReservedUserNameError } from '#/db/userNameValidation.js';
 import {
@@ -1622,6 +1622,108 @@ describe('DELETE /admin/tokens/:id', () => {
 
     expect(response.statusCode).toBe(403);
     expect(db.deleteApiToken).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+});
+
+describe('POST /admin/config/reload', () => {
+  it('returns 403 for non-admin users', async () => {
+    const db = createStubDatabase();
+    const app = await createProtectedTestApp({
+      db,
+      withValidAuth: true,
+      user: sampleUserRecord
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/admin/config/reload',
+      headers: authHeader()
+    });
+
+    expect(response.statusCode).toBe(403);
+
+    await app.close();
+  });
+
+  it('returns the reload report for admin users', async () => {
+    const db = createStubDatabase();
+    const adminUser = {
+      ...sampleUserRecord,
+      id: 'admin-1',
+      role: 'admin' as const,
+      collectionAccess: [],
+      environmentAccess: []
+    };
+    const reloadConfig = vi.fn().mockResolvedValue({
+      sections: [
+        { section: 'db', status: 'unchanged' },
+        { section: 'redis', status: 'unchanged' },
+        { section: 'llm', status: 'reloaded' },
+        { section: 'plugins', status: 'reloaded' },
+        { section: 'server', status: 'unchanged' }
+      ]
+    });
+    const app = await createProtectedTestApp({
+      db,
+      withValidAuth: true,
+      user: adminUser,
+      reloadConfig
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/admin/config/reload',
+      headers: authHeader()
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(reloadConfig).toHaveBeenCalledOnce();
+    expect(response.json()).toEqual({
+      sections: [
+        { section: 'db', status: 'unchanged' },
+        { section: 'redis', status: 'unchanged' },
+        { section: 'llm', status: 'reloaded' },
+        { section: 'plugins', status: 'reloaded' },
+        { section: 'server', status: 'unchanged' }
+      ]
+    });
+
+    await app.close();
+  });
+
+  it('returns 400 when reload fails before any section is applied', async () => {
+    const db = createStubDatabase();
+    const adminUser = {
+      ...sampleUserRecord,
+      id: 'admin-1',
+      role: 'admin' as const,
+      collectionAccess: [],
+      environmentAccess: []
+    };
+    const reloadConfig = vi.fn().mockResolvedValue({
+      sections: [],
+      fatalError: 'Config file not found: /missing/server.yaml'
+    });
+    const app = await createProtectedTestApp({
+      db,
+      withValidAuth: true,
+      user: adminUser,
+      reloadConfig
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/admin/config/reload',
+      headers: authHeader()
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      sections: [],
+      fatalError: 'Config file not found: /missing/server.yaml'
+    });
 
     await app.close();
   });

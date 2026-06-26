@@ -4,11 +4,11 @@ import {
   validatorCompiler,
   type ZodTypeProvider
 } from 'fastify-type-provider-zod';
-import type { ServerConfig } from '#/config/serverConfig.js';
 import type { IDatabase } from '#/db/IDatabase.js';
 import type { IThrottleStore } from '#/server/auth/throttle/IThrottleStore.js';
 import { readPackageVersion } from '#/packageVersion.js';
 import { registerRoutes } from '#/server/routes/index.js';
+import type { ReloadResult, RuntimeContext } from '#/server/runtimeContext.js';
 
 export interface CreateServerOptions {
   /**
@@ -24,12 +24,17 @@ export interface CreateServerOptions {
   /**
    * Database used for bearer token validation on protected routes.
    */
-  db: IDatabase;
+  db?: IDatabase;
 
   /**
    * Redis-backed store for authentication throttling on protected routes.
    */
-  throttleStore: IThrottleStore;
+  throttleStore?: IThrottleStore;
+
+  /**
+   * Reloads server.yaml and returns a per-section report.
+   */
+  reloadConfig?: () => Promise<ReloadResult>;
 }
 
 /**
@@ -37,14 +42,31 @@ export interface CreateServerOptions {
  *
  * Does not call `listen`; use {@link runServer} or test inject for that.
  *
- * @param config - Server bind settings and optional LLM configuration.
- * @param options - Logger, version, and database overrides.
+ * When a {@link RuntimeContext} is supplied, its stable db and throttle proxies are
+ * wired automatically. Explicit `db` and `throttleStore` options override those defaults
+ * for tests.
+ *
+ * @param ctxOrConfig - Runtime context, or legacy server config object for tests.
+ * @param options - Logger, version, and optional dependency overrides.
  * @returns Fastify app with type provider and routes attached.
  */
 export async function createServer(
-  config: ServerConfig,
-  options: CreateServerOptions
+  ctxOrConfig: RuntimeContext | import('#/config/serverConfig.js').ServerConfig,
+  options: CreateServerOptions = {}
 ): Promise<FastifyInstance> {
+  const isRuntimeContext = 'getLlm' in ctxOrConfig && 'configPath' in ctxOrConfig;
+  const ctx = isRuntimeContext ? (ctxOrConfig as RuntimeContext) : null;
+  const legacyConfig = isRuntimeContext
+    ? null
+    : (ctxOrConfig as import('#/config/serverConfig.js').ServerConfig);
+
+  const db = options.db ?? ctx?.db;
+  const throttleStore = options.throttleStore ?? ctx?.throttleStore;
+
+  if (!db || !throttleStore) {
+    throw new Error('createServer requires db and throttleStore.');
+  }
+
   const app = Fastify({
     logger: options.verbose ?? false
   }).withTypeProvider<ZodTypeProvider>();
@@ -54,10 +76,11 @@ export async function createServer(
 
   await registerRoutes(app, {
     version: options.version ?? readPackageVersion(),
-    db: options.db,
-    throttleStore: options.throttleStore,
-    llm: config.llm,
-    plugins: config.plugins
+    db,
+    throttleStore,
+    getLlm: ctx ? () => ctx.getLlm() : () => legacyConfig?.llm ?? null,
+    getPlugins: ctx ? () => ctx.getPlugins() : () => legacyConfig?.plugins ?? null,
+    reloadConfig: options.reloadConfig ?? (async () => ({ sections: [] }))
   });
 
   return app;

@@ -128,6 +128,23 @@ export const listAdminTokensResponseSchema = z.object({
 });
 
 /**
+ * Per-section outcome reported by config reload routes.
+ */
+export const reloadConfigSectionResultSchema = z.object({
+  section: z.enum(['db', 'redis', 'llm', 'plugins', 'server']),
+  status: z.enum(['reloaded', 'unchanged', 'failed', 'restart-required']),
+  error: z.string().optional()
+});
+
+/**
+ * Response body schema for `POST /admin/config/reload`.
+ */
+export const reloadConfigResponseSchema = z.object({
+  sections: z.array(reloadConfigSectionResultSchema),
+  fatalError: z.string().optional()
+});
+
+/**
  * Serializes a user record for JSON management API responses.
  *
  * @param user - User record from the database layer.

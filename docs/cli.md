@@ -64,6 +64,8 @@ team-hub -c server.yaml start
 
 The server listens on the address configured in `server.yaml` (see [Setup](./setup.md)).
 
+While running, reload config from disk with `kill -HUP` on the start process or `POST /admin/config/reload` (admin token required). See [Deploy — Reload config without restarting](./deploy.md#reload-config-without-restarting) for section-by-section behavior.
+
 ## migrate
 
 Apply database schema migrations for the configured backend (Postgres, MySQL, or Firestore).

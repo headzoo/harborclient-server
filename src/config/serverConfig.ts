@@ -71,7 +71,13 @@ export class ConfigError extends Error {
  * @param configPath - User-supplied config path (relative or absolute).
  * @returns Absolute filesystem path to the config file.
  */
-function resolveConfigPath(configPath: string): string {
+/**
+ * Resolves a config path relative to the current working directory when needed.
+ *
+ * @param configPath - User-supplied config path (relative or absolute).
+ * @returns Absolute filesystem path to the config file.
+ */
+export function resolveConfigPath(configPath: string): string {
   return path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
 }
 

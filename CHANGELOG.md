@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Enhance server configuration reload capabilities. (`2df710d`)
 - Add optional plugins configuration and routes for plugin sources. (`9b591ec`)
 
 ## 0.2.1 - 2026-06-24

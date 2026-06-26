@@ -51,8 +51,6 @@ export function buildAuthThrottleKey(request: FastifyRequest, token: string | nu
  * @returns Hook that rejects unauthenticated requests with HTTP 401.
  */
 export function createBearerAuthHook(db: IDatabase, throttleStore: IThrottleStore) {
-  const policy = throttleStore.getPolicy();
-
   /**
    * Validates Authorization: Bearer and attaches the matching token and user.
    *
@@ -60,6 +58,7 @@ export function createBearerAuthHook(db: IDatabase, throttleStore: IThrottleStor
    * @param reply - Fastify reply used to short-circuit unauthorized requests.
    */
   return async function bearerAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const policy = throttleStore.getPolicy();
     const token = extractBearer(request.headers.authorization);
     const throttleKey = buildAuthThrottleKey(request, token);
 

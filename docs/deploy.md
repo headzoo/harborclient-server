@@ -249,13 +249,54 @@ team-hub user list
 
 See [CLI](./cli.md) for all subcommands and options.
 
+### Reload config without restarting
+
+Team Hub can reload `server.yaml` while the `start` process is running. Reloadable sections are applied on a **best-effort** basis: each section is evaluated independently, and failures in one section do not roll back changes already applied to other sections.
+
+| Section | Live reload? | Notes |
+| ------- | ------------ | ----- |
+| `db` | Yes | Reconnects when the raw `db` mapping changes |
+| `redis` | Yes | Reconnects when the raw `redis` mapping changes |
+| `llm` | Yes | Applied immediately |
+| `plugins` | Yes | Applied immediately |
+| `server.host` / `server.port` | No | Reported as `restart-required`; restart the process to rebind |
+
+**Triggers:**
+
+```bash
+# Signal the running start process (inside the container or on the host)
+kill -HUP "$(pgrep -f 'dist/cli.js.* start')"
+
+# Admin API (requires an admin-role bearer token)
+curl -s -X POST http://127.0.0.1:8788/admin/config/reload \
+  -H "Authorization: Bearer hbk_your_admin_token_here"
+```
+
+Both triggers re-read the same config path passed to `team-hub -c … start`. When the file is missing or invalid YAML, nothing is changed and the reload returns a fatal error.
+
+Example reload response:
+
+```json
+{
+  "sections": [
+    { "section": "db", "status": "unchanged" },
+    { "section": "redis", "status": "unchanged" },
+    { "section": "llm", "status": "reloaded" },
+    { "section": "plugins", "status": "reloaded" },
+    { "section": "server", "status": "unchanged" }
+  ]
+}
+```
+
+Possible `status` values per section: `reloaded`, `unchanged`, `failed`, `restart-required`. When the config file itself cannot be loaded, the response includes `fatalError` and an empty `sections` array.
+
 ### Restart the server after config changes
 
-Team Hub loads `server.yaml` once at startup. It does **not** hot-reload config. After you change settings, restart the Team Hub process so they take effect.
+Use a full process restart when you change `server.host` or `server.port`, or when you prefer a clean boot after large infrastructure changes.
 
 | Scenario | Action |
 | -------- | ------ |
-| Edited `/etc/team-hub/server.yaml` manually (e.g. added `llm:`) | Run the restart script — **preserves** your edits |
+| Edited `/etc/team-hub/server.yaml` (e.g. added `llm:`) | Prefer `kill -HUP …` or `POST /admin/config/reload`; restart only if bind settings changed |
 | Changed Docker env vars (`TEAM_HUB_DB_*`, etc.) | `docker restart CONTAINER` from the host — entrypoint **regenerates** yaml from env |
 | Full stack restart (Postgres, Redis, Nginx, Team Hub) | `docker restart CONTAINER` |
 

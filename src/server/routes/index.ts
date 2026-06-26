@@ -16,6 +16,7 @@ import {
   createBearerAuthHook,
   registerBearerAuthDecorator
 } from '#/server/auth/bearerAuthPlugin.js';
+import type { ReloadResult } from '#/server/runtimeContext.js';
 
 export interface RegisterRoutesOptions {
   /**
@@ -34,14 +35,19 @@ export interface RegisterRoutesOptions {
   throttleStore: IThrottleStore;
 
   /**
-   * Normalized LLM configuration from server.yaml, or null when unset.
+   * Returns the current normalized LLM configuration from server.yaml.
    */
-  llm: LlmConfig | null;
+  getLlm: () => LlmConfig | null;
 
   /**
-   * Normalized plugin source configuration from server.yaml, or null when unset.
+   * Returns the current normalized plugin source configuration from server.yaml.
    */
-  plugins: PluginsConfig | null;
+  getPlugins: () => PluginsConfig | null;
+
+  /**
+   * Reloads server.yaml and returns a per-section report.
+   */
+  reloadConfig: () => Promise<ReloadResult>;
 }
 
 /**
@@ -71,13 +77,17 @@ export async function registerProtectedRoutes(
   app.addHook('onRequest', createBearerAuthHook(options.db, options.throttleStore));
 
   await registerAuthRoutes(app);
-  await registerAdminRoutes(app, { db: options.db, llm: options.llm });
+  await registerAdminRoutes(app, {
+    db: options.db,
+    getLlm: options.getLlm,
+    reloadConfig: options.reloadConfig
+  });
   await registerCollectionRoutes(app, options.db);
   await registerEnvironmentRoutes(app, options.db);
   await registerFolderRoutes(app, options.db);
   await registerRequestRoutes(app, options.db);
-  await registerLlmRoutes(app, { db: options.db, llm: options.llm });
-  await registerPluginsRoutes(app, { plugins: options.plugins });
+  await registerLlmRoutes(app, { db: options.db, getLlm: options.getLlm });
+  await registerPluginsRoutes(app, { getPlugins: options.getPlugins });
 }
 
 /**

@@ -12,6 +12,7 @@ import type { IThrottleStore } from '#/server/auth/throttle/IThrottleStore.js';
 import { createStubThrottleStore } from '#/server/auth/throttle/stubThrottleStore.js';
 import { registerProtectedRoutes } from '#/server/routes/index.js';
 import { sampleAttribution } from '#/server/routes/test/sampleAttribution.js';
+import type { ReloadResult } from '#/server/runtimeContext.js';
 
 export const validBearerToken = 'hbk_valid-token';
 
@@ -80,6 +81,11 @@ export interface CreateProtectedTestAppOptions {
    * Plugin source configuration passed to protected routes; defaults to null.
    */
   plugins?: import('#/config/pluginsConfig.js').PluginsConfig | null;
+
+  /**
+   * Config reload handler for admin reload route tests.
+   */
+  reloadConfig?: () => Promise<ReloadResult>;
 }
 
 /**
@@ -93,6 +99,8 @@ export async function createProtectedTestApp(
 ): Promise<FastifyInstance> {
   const user = options.user ?? sampleUserRecord;
   const throttleStore = options.throttleStore ?? createDefaultThrottleStoreStub();
+  const llm = options.llm ?? null;
+  const plugins = options.plugins ?? null;
 
   if (options.withValidAuth) {
     options.db.findActiveApiTokenByHash.mockResolvedValue(sampleApiTokenRecord);
@@ -109,8 +117,9 @@ export async function createProtectedTestApp(
       version: '0.1.0',
       db: options.db,
       throttleStore,
-      llm: options.llm ?? null,
-      plugins: options.plugins ?? null
+      getLlm: () => llm,
+      getPlugins: () => plugins,
+      reloadConfig: options.reloadConfig ?? (async () => ({ sections: [] }))
     });
   });
 

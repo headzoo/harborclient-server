@@ -38,13 +38,14 @@ import {
   userTokenListCommand,
   userTokenRevokeCommand
 } from '#/cli/userCommand.js';
-import { ConfigError, loadServerConfig } from '#/config/serverConfig.js';
+import { ConfigError, loadServerConfig, resolveConfigPath } from '#/config/serverConfig.js';
 import type { IDatabase } from '#/db/index.js';
 import { currentUsagePeriod } from '#/server/llm/models.js';
 import { createStubDatabase } from '#/db/stubDatabase.js';
 import { defaultAuth } from '#/db/types.js';
 import type { IThrottleStore } from '#/server/auth/throttle/IThrottleStore.js';
 import { createStubThrottleStore } from '#/server/auth/throttle/stubThrottleStore.js';
+import { createRuntimeContext } from '#/server/runtimeContext.js';
 import { startCommand, runServer } from '#/server.js';
 
 /**
@@ -295,38 +296,20 @@ ${sampleDbSection}${sampleRedisSection}`);
       plugins: null
     });
     expect(createServerMock).toHaveBeenCalledWith(
-      {
-        port: 8787,
+      expect.objectContaining({
+        configPath: resolveConfigPath(configPath),
         host: '0.0.0.0',
-        db: {
-          driver: 'postgres',
-          host: '127.0.0.1',
-          port: 5432,
-          user: 'harbor',
-          password: 'harbor',
-          database: 'harbor'
-        },
-        redis: sampleRedisConfig,
-        llm: null,
-        plugins: null
-      },
-      { verbose: true, db, throttleStore }
+        port: 8787
+      }),
+      expect.objectContaining({
+        verbose: true,
+        reloadConfig: expect.any(Function)
+      })
     );
-    expect(log).toHaveBeenCalledWith('Starting server with config:', {
-      port: 8787,
-      host: '0.0.0.0',
-      db: {
-        driver: 'postgres',
-        host: '127.0.0.1',
-        port: 5432,
-        user: 'harbor',
-        password: 'harbor',
-        database: 'harbor'
-      },
-      redis: sampleRedisConfig,
-      llm: null,
-      plugins: null
-    });
+    expect(log).toHaveBeenCalledWith(
+      'Starting server with config path:',
+      resolveConfigPath(configPath)
+    );
 
     log.mockRestore();
   });
@@ -341,45 +324,24 @@ describe('runServer', () => {
     const app = createMockApp();
     const db = createMockDatabase();
     const throttleStore = createMockThrottleStore();
+    createDatabaseMock.mockReturnValue(db);
+    createThrottleStoreMock.mockReturnValue(throttleStore);
     createServerMock.mockResolvedValue(app);
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}${sampleRedisSection}`);
+    const config = loadServerConfig(configPath);
+    const ctx = createRuntimeContext(config, resolveConfigPath(configPath));
 
-    await runServer(
-      {
-        host: '127.0.0.1',
-        port: 8787,
-        db: {
-          driver: 'postgres',
-          host: '127.0.0.1',
-          port: 5432,
-          user: 'harbor',
-          password: 'harbor',
-          database: 'harbor'
-        },
-        redis: sampleRedisConfig,
-        llm: null,
-        plugins: null
-      },
-      { db, throttleStore }
-    );
+    await runServer(ctx);
 
     expect(createServerMock).toHaveBeenCalledWith(
-      {
-        host: '127.0.0.1',
-        port: 8787,
-        db: {
-          driver: 'postgres',
-          host: '127.0.0.1',
-          port: 5432,
-          user: 'harbor',
-          password: 'harbor',
-          database: 'harbor'
-        },
-        redis: sampleRedisConfig,
-        llm: null,
-        plugins: null
-      },
-      { verbose: undefined, db, throttleStore }
+      ctx,
+      expect.objectContaining({
+        reloadConfig: expect.any(Function)
+      })
     );
     expect(db.connect).toHaveBeenCalledOnce();
     expect(throttleStore.connect).toHaveBeenCalledOnce();
@@ -387,6 +349,29 @@ describe('runServer', () => {
     expect(log).toHaveBeenCalledWith('Team Hub listening on http://127.0.0.1:8787');
 
     log.mockRestore();
+  });
+
+  it('reloads config when SIGHUP is received', async () => {
+    const app = createMockApp();
+    const db = createMockDatabase();
+    const throttleStore = createMockThrottleStore();
+    createDatabaseMock.mockReturnValue(db);
+    createThrottleStoreMock.mockReturnValue(throttleStore);
+    createServerMock.mockResolvedValue(app);
+    const onSpy = vi.spyOn(process, 'on');
+    const configPath = writeConfig(`server:
+  port: 8787
+  host: 127.0.0.1
+${sampleDbSection}${sampleRedisSection}`);
+    const config = loadServerConfig(configPath);
+    const ctx = createRuntimeContext(config, resolveConfigPath(configPath));
+
+    await runServer(ctx);
+
+    const sighupHandler = onSpy.mock.calls.find((call) => call[0] === 'SIGHUP')?.[1];
+    expect(sighupHandler).toBeTypeOf('function');
+
+    onSpy.mockRestore();
   });
 });
 
