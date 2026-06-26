@@ -70,8 +70,14 @@ fi
 mkdir -p /etc/team-hub /var/log/team-hub /var/run/team-hub
 chmod 755 /var/log/team-hub /var/run/team-hub
 
-envsubst '${TEAM_HUB_PORT} ${TEAM_HUB_HOST} ${TEAM_HUB_DB_DRIVER} ${TEAM_HUB_DB_HOST} ${TEAM_HUB_DB_PORT} ${TEAM_HUB_DB_USER} ${TEAM_HUB_DB_PASSWORD} ${TEAM_HUB_DB_DATABASE} ${TEAM_HUB_REDIS_HOST} ${TEAM_HUB_REDIS_PORT} ${TEAM_HUB_LOGGING_LEVEL} ${TEAM_HUB_LOGGING_FILE} ${TEAM_HUB_LOGGING_CONSOLE}' \
-  < /docker/server.yaml.template > "${TEAM_HUB_CONFIG}"
+# Renders server.yaml from env vars on first boot only. Preserves manual edits and
+# mounted configs across restarts unless TEAM_HUB_FORCE_CONFIG_GENERATE=true.
+if [ "${TEAM_HUB_FORCE_CONFIG_GENERATE:-false}" = "true" ] || [ ! -s "${TEAM_HUB_CONFIG}" ]; then
+  envsubst '${TEAM_HUB_PORT} ${TEAM_HUB_HOST} ${TEAM_HUB_DB_DRIVER} ${TEAM_HUB_DB_HOST} ${TEAM_HUB_DB_PORT} ${TEAM_HUB_DB_USER} ${TEAM_HUB_DB_PASSWORD} ${TEAM_HUB_DB_DATABASE} ${TEAM_HUB_REDIS_HOST} ${TEAM_HUB_REDIS_PORT} ${TEAM_HUB_LOGGING_LEVEL} ${TEAM_HUB_LOGGING_FILE} ${TEAM_HUB_LOGGING_CONSOLE}' \
+    < /docker/server.yaml.template > "${TEAM_HUB_CONFIG}"
+else
+  echo "entrypoint: keeping existing config at ${TEAM_HUB_CONFIG}"
+fi
 
 envsubst '${PORT} ${TEAM_HUB_PORT}' \
   < /docker/nginx.conf.template > /etc/nginx/conf.d/team-hub.conf

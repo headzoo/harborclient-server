@@ -198,7 +198,7 @@ plugins:
 
 ## Docker environment variables
 
-The all-in-one Docker image renders `/etc/team-hub/server.yaml` from environment variables at startup. The CLI does not read `TEAM_HUB_CONFIG`; pass `-c /etc/team-hub/server.yaml` explicitly.
+The all-in-one Docker image renders `/etc/team-hub/server.yaml` from environment variables on first boot (when the file is missing or empty). Restarts preserve an existing file; mount a host `server.yaml` to survive container recreation. The CLI does not read `TEAM_HUB_CONFIG`; pass `-c /etc/team-hub/server.yaml` explicitly.
 
 | Variable | Default | Maps to |
 | -------- | ------- | ------- |

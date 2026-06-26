@@ -25,7 +25,7 @@ More hosting guides may be added over time.
 On startup the entrypoint:
 
 1. Initializes bundled Postgres on first boot (creates the `harbor` user and database).
-2. Renders `/etc/team-hub/server.yaml` from environment variables.
+2. Renders `/etc/team-hub/server.yaml` from environment variables on first boot (skips if the file already exists).
 3. Runs `team-hub migrate`, then `team-hub start`.
 4. Starts Nginx on `$PORT`.
 
@@ -433,7 +433,7 @@ The entrypoint runs migrations on each start, so schema updates apply automatica
 
 ### Edit configuration
 
-The running config file is `/etc/team-hub/server.yaml` inside the container. The entrypoint generates it from environment variables on **container create**; after that you can edit it directly for settings such as `llm:`, `plugins:`, or `logging:`.
+The running config file is `/etc/team-hub/server.yaml` inside the container. On **first boot** (when the file is missing or empty), the entrypoint generates it from environment variables. After that, edits inside the container are kept across `docker restart`. To reset the file from env vars, set `TEAM_HUB_FORCE_CONFIG_GENERATE=true` on the next start.
 
 Open the file with `nano` (included in the image):
 
@@ -462,7 +462,22 @@ Apply changes without recreating the container:
 
 See [Reload config without restarting](#reload-config-without-restarting) for the full reload behavior and response shape.
 
-**Important:** `docker restart team-hub` or recreating the container with `docker run` **regenerates** `/etc/team-hub/server.yaml` from environment variables and **overwrites** manual edits. To change `db`, `redis`, or logging defaults persistently, either keep editing the yaml after each recreate or pass the matching `TEAM_HUB_*` env vars in `docker run`.
+**Persist config across container recreation:** bind-mount a host file so edits survive `docker rm` and image rebuilds:
+
+```bash
+docker run -d \
+  --name team-hub \
+  --restart unless-stopped \
+  -p 80:8080 \
+  -v team-hub-pgdata:/var/lib/postgresql/data \
+  -v /path/on/host/server.yaml:/etc/team-hub/server.yaml \
+  -e TEAM_HUB_DB_PASSWORD='choose-a-strong-password' \
+  team-hub:latest
+```
+
+Copy `server.yaml.example` to the host path and adjust it before the first run. The entrypoint skips template generation when the mounted file already exists.
+
+For settings covered by `TEAM_HUB_*` env vars (`db`, `redis`, logging defaults), you can also pass those in `docker run` instead of editing YAML. Set `TEAM_HUB_FORCE_CONFIG_GENERATE=true` once if you need to regenerate the file from env vars.
 
 ### VPS troubleshooting
 
@@ -668,7 +683,8 @@ Use `/health` for manual checks and uptime monitoring. The response includes `st
 | `PORT` | `8080` | Nginx listen port (some platforms inject this at runtime) |
 | `TEAM_HUB_PORT` | `8787` | Internal Team Hub port |
 | `TEAM_HUB_HOST` | `127.0.0.1` | Team Hub bind address |
-| `TEAM_HUB_CONFIG` | `/etc/team-hub/server.yaml` | Generated config path |
+| `TEAM_HUB_CONFIG` | `/etc/team-hub/server.yaml` | Config file path (generated on first boot if missing) |
+| `TEAM_HUB_FORCE_CONFIG_GENERATE` | `false` | When `true`, overwrite an existing config from env vars |
 | `TEAM_HUB_START_POSTGRES` | `true` | Start bundled Postgres |
 | `TEAM_HUB_START_REDIS` | `true` | Start bundled Redis |
 | `TEAM_HUB_DB_DRIVER` | `postgres` | `postgres`, `mysql`, or `firestore` |

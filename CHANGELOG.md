@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve Docker server.yaml across container restarts.. (`d457773`)
+
 ## 0.2.3 - 2026-06-26
 
 - Implement deletion lock feature for collections and environments. (`bbdd197`)
