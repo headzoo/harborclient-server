@@ -25,14 +25,6 @@ const buildPageLink = (pathPrefix, sectionSlug, anchor) => {
 };
 
 /**
- * Builds a VitePress overview link for a docs subtree.
- *
- * @param {string} pathPrefix URL path prefix without leading or trailing slashes.
- * @returns {string} Overview link path.
- */
-const buildOverviewLink = (pathPrefix) => (pathPrefix ? `/${pathPrefix}/` : '/');
-
-/**
  * Builds the display label used in the generated sidebar for a heading.
  *
  * @param {string} title Markdown heading text.
